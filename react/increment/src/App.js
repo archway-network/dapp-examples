@@ -262,8 +262,8 @@ export default class App extends Component {
       logMeta.push(meta);
     }
     const logItems = (this.state.logs.length) ? this.state.logs.map((log,i) =>
-      <div>
-        <p class="label">
+      <div key={logMeta[i].timestamp}>
+        <p className="label">
           <strong><span>Counter {(logMeta[i].type === 'increment') ? 'Incremented' : 'Reset' }&nbsp;</span>({logMeta[i].timestamp}):</strong>
         </p>
         <pre className="log-entry" key={i}>{log}</pre>
