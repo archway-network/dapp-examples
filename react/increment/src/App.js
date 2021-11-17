@@ -154,6 +154,72 @@ export default class App extends Component {
     // Update Logs
     if (tx.logs) {
       if (tx.logs.length) {
+        tx.logs[0].type = 'increment';
+        tx.logs[0].timestamp = new Date().getTime();
+        this.setState({
+          logs: [JSON.stringify(tx.logs, null, 2), ...this.state.logs]
+        });
+      }
+    }
+    // Refresh counter
+    let counter = await this.getCount();
+    let count;
+    if (!isNaN(counter.count)) {
+      count = counter.count;
+    } else {
+      count = this.state.counter;
+      console.warn('Error expected numeric value from counter, found: ', typeof counter.count);
+    }
+    // Render updates
+    loading = {
+      status: false,
+      msg: ""
+    };
+    this.setState({
+      counter: count,
+      loadingStatus: loading.status,
+      loadingMsg: loading.msg
+    });
+  }
+
+  /**
+   * Reset counter to 0
+   * @see {SigningCosmWasmClient}
+   * @see https://github.com/drewstaylor/archway-template/blob/main/src/contract.rs#L43
+   */
+  resetCounter = async () => {
+    // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
+    if (!this.state.user) {
+      console.warn('Error getting user account', this.state.user);
+      return;
+    } else if (!this.state.userAddress) {
+      console.warn('Error getting user address', this.state.userAddress);
+      return;
+    }
+    let loading;
+    loading = {
+      status: true,
+      msg: "Resetting counter..."
+    };
+    this.setState({
+      loadingStatus: loading.status,
+      loadingMsg: loading.msg
+    });
+    // Prepare Tx
+    let entrypoint = {
+      reset: {
+        count: 0
+      }
+    };
+    let txFee = calculateFee(300_000, this.state.gasPrice); // XXX TODO: Fix gas estimation
+    // Send Tx
+    let tx = await this.state.cwClient.execute(this.state.userAddress, this.state.contract, entrypoint, txFee);
+    console.log('Reset Tx', tx);
+    // Update Logs
+    if (tx.logs) {
+      if (tx.logs.length) {
+        tx.logs[0].type = 'reset';
+        tx.logs[0].timestamp = new Date().getTime();
         this.setState({
           logs: [JSON.stringify(tx.logs, null, 2), ...this.state.logs]
         });
@@ -186,10 +252,25 @@ export default class App extends Component {
     const loadingMsg = this.state.loadingMsg;
 
     // Maps
+    let logMeta = [];
+    for (let i = 0; i < this.state.logs.length; i++) {
+      let logItem = JSON.parse(this.state.logs[i]);
+      let meta = {
+        type: logItem[0].type,
+        timestamp: logItem[0].timestamp
+      };
+      logMeta.push(meta);
+    }
     const logItems = (this.state.logs.length) ? this.state.logs.map((log,i) =>
-      <pre className="log-entry" key={i}>{log}</pre>
+      <div>
+        <p class="label">
+          <strong><span>Counter {(logMeta[i].type === 'increment') ? 'Incremented' : 'Reset' }&nbsp;</span>({logMeta[i].timestamp}):</strong>
+        </p>
+        <pre className="log-entry" key={i}>{log}</pre>
+      </div>
     ) : null;
 
+    // Output
     return (
       <div className="content">
         <img src={logo} alt="logo" />
@@ -204,7 +285,7 @@ export default class App extends Component {
         {/* Controls */}
         <div className="button-controls">
           <button id="incrementer" className="btn btn-main" onClick={this.incrementCounter}>Increment Counter</button>
-          {/* <button id="resetter" className="btn btn-alt">Reset Counter</button> */}
+          <button id="resetter" className="btn btn-alt" onClick={this.resetCounter}>Reset Counter</button>
         </div>
 
         {/* Loading */}
