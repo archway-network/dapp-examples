@@ -141,7 +141,7 @@ export default class App extends Component {
     let entrypoint = {
       increment: {}
     };
-    let txFee = calculateFee(300_000, this.state.gasPrice); // XXX TODO: Fix gas estimation
+    let txFee = calculateFee(300_000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
     console.log('Tx args', {
       senderAddress: this.state.userAddress, 
       contractAddress: this.state.contract, 
@@ -211,7 +211,7 @@ export default class App extends Component {
         count: 0
       }
     };
-    let txFee = calculateFee(300_000, this.state.gasPrice); // XXX TODO: Fix gas estimation
+    let txFee = calculateFee(300_000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
     // Send Tx
     let tx = await this.state.cwClient.execute(this.state.userAddress, this.state.contract, entrypoint, txFee);
     console.log('Reset Tx', tx);

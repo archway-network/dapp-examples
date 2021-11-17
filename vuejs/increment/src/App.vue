@@ -140,7 +140,7 @@ export default {
         status: true,
         msg: "Incrementing counter..."
       };
-      let txFee = calculateFee(300_000, this.gas.price); // XXX TODO: Fix gas estimation
+      let txFee = calculateFee(300_000, this.gas.price); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
       console.log('Tx args', {
         senderAddress: this.userAddress, 
         contractAddress: this.contract, 
@@ -194,7 +194,7 @@ export default {
         status: true,
         msg: "Resetting counter..."
       };
-      let txFee = calculateFee(300_000, this.gas.price); // XXX TODO: Fix gas estimation
+      let txFee = calculateFee(300_000, this.gas.price); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
       // Send Tx
       let tx = await this.cwClient.execute(this.userAddress, this.contract, entrypoint, txFee);
       console.log('Reset Tx', tx);
