@@ -63,7 +63,7 @@ export default {
     userAddress: null
   }),
   mounted: async function () {
-    // Init query/tx client
+    // Init dApp
     await this.init();
 
     // Get count
