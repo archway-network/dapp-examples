@@ -23,8 +23,12 @@ cd dApp-examples/vuejs/increment
 cp env.example .env
 vim .env
 cat .env
-# Outputs:
+# Example output:
 > VUE_APP_CONTRACT_ADDRESS="archway1c6yawecywrgu9y5lc6y79mvxgk6lx0hhehn5kn"
 > VUE_APP_ACCOUNT_ADDRESS="archway14qemq0vw6y3gc3u3e0aty2e764u4gs5lndxgyk"
-> VUE_APP_ACCOUNT_MNEMONIC="enlist hip relief stomach skate base shallow young switch frequent cry park" # Publicly known "Alice" mnemonic, don't actually use :)
+> VUE_APP_ACCOUNT_MNEMONIC="mnemonic seed words go here"
 ```
+
+## Why are we importing a mnemonic?
+
+Hang in there, we're working browser extension options for connecting users to Archway dApps. We hope to have this option for you soon.
