@@ -13,7 +13,10 @@ Frontends currently are available in either [Vue.js](https://vuejs.org/) or [Rea
 
 Both Vue and React projects will require you to setup environment variables with some Archway account and RPC information.
 
-Once you have decided which example you'd like to run, change to that directory and copy the `env.example` file to a file called `.env` and edit it with your settings
+Once you have decided which example you'd like to run, change to that directory and copy the `env.example` file to a file called `.env` and edit it with your desired settings.
+
+Example:
+
 ```bash
 cd vuejs/increment
 cp env.example .env
