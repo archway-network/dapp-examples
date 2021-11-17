@@ -10,7 +10,6 @@ const RPC = "https://rpc.constantine-1.archway.tech:443";
 const ContractAddress = process.env.REACT_APP_CONTRACT_ADDRESS;
 const BECH32_PREFIX = "archway";
 
-
 export default class App extends Component {
   constructor(props) {
     super(props);
@@ -136,7 +135,6 @@ export default class App extends Component {
       loadingStatus: loading.status,
       loadingMsg: loading.msg
     });
-
     // Prepare Tx
     let entrypoint = {
       increment: {}
