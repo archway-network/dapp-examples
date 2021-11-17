@@ -18,7 +18,8 @@ Once you have decided which example you'd like to run, change to that directory 
 Example:
 
 ```bash
-cd vuejs/increment
+git clone git@github.com:archway-network/dApp-examples.git
+cd dApp-examples/vuejs/increment
 cp env.example .env
 vim .env
 cat .env
