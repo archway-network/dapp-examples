@@ -31,4 +31,4 @@ cat .env
 
 ## Why are we importing a mnemonic?
 
-Hang in there, we're working browser extension options for connecting users to Archway dApps. We hope to have this option for you soon.
+Hang in there, we're working on browser extension options for connecting users to Archway dApps. We hope to have this option for you soon.
