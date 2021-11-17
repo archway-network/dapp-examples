@@ -32,3 +32,11 @@ cat .env
 ## Why are we importing a mnemonic?
 
 Hang in there, we're working on browser extension options for connecting users to Archway dApps. We hope to have this option for you soon.
+
+## Packages
+
+Working in concert, the following packages provide dApp frontends with Archway capabilities:
+
+- [@cosmjs/stargate](https://www.npmjs.com/package/@cosmjs/stargate)
+- [@cosmjs/cosmwasm-stargate](https://www.npmjs.com/package/@cosmjs/cosmwasm-stargate)
+- [@cosmjs/proto-signing](https://www.npmjs.com/package/@cosmjs/proto-signing)
