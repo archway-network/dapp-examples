@@ -19,8 +19,8 @@ cd vuejs/increment
 cp env.example .env
 vim .env
 cat .env
+# Outputs:
 > VUE_APP_CONTRACT_ADDRESS="archway1c6yawecywrgu9y5lc6y79mvxgk6lx0hhehn5kn"
 > VUE_APP_ACCOUNT_ADDRESS="archway14qemq0vw6y3gc3u3e0aty2e764u4gs5lndxgyk"
-# Publicly known "Alice" mnemonic, don't actually use :)
-> VUE_APP_ACCOUNT_MNEMONIC="enlist hip relief stomach skate base shallow young switch frequent cry park"
+> VUE_APP_ACCOUNT_MNEMONIC="enlist hip relief stomach skate base shallow young switch frequent cry park" # Publicly known "Alice" mnemonic, don't actually use :)
 ```
