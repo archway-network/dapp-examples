@@ -37,7 +37,7 @@ import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
 
-const RPC = "https://rpc.constantine-1.archway.tech:443";
+const RPC = process.env.VUE_APP_RPC_ADDRESS;
 const ContractAddress = process.env.VUE_APP_CONTRACT_ADDRESS;
 const BECH32_PREFIX = "archway";
 

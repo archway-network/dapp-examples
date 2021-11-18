@@ -11,9 +11,9 @@ Frontends currently are available in either [Vue.js](https://vuejs.org/) or [Rea
 
 ## Setting Environment Variables
 
-Both Vue and React projects will require you to setup environment variables with some Archway account and RPC information.
+Both Vue and React projects require you setup environment variables with some Archway account and RPC information.
 
-Once you have decided which example you'd like to run, change to that directory and copy the `env.example` file to a file called `.env` and edit it with your desired settings.
+When you've have decided which example you'd like to run, change to that directory and copy `env.example` to a file called `.env` and edit it with your desired settings.
 
 Example:
 
@@ -24,12 +24,13 @@ cp env.example .env
 vim .env
 cat .env
 # Example output:
+> VUE_APP_RPC_ADDRESS="https://rpc.constantine-1.archway.tech:443"
 > VUE_APP_CONTRACT_ADDRESS="archway1c6yawecywrgu9y5lc6y79mvxgk6lx0hhehn5kn"
 > VUE_APP_ACCOUNT_ADDRESS="archway14qemq0vw6y3gc3u3e0aty2e764u4gs5lndxgyk"
 > VUE_APP_ACCOUNT_MNEMONIC="mnemonic seed words go here"
 ```
 
-## Why are we importing a mnemonic?
+## Why are we importing a wallet mnemonic?
 
 Hang in there, we're working on browser extension options for connecting users to Archway dApps. We hope to have this option for you soon.
 
