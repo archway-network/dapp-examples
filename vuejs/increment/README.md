@@ -1,4 +1,4 @@
-# archway-increment-dapp
+# archway-increment-dapp-vuejs
 
 ## Project setup
 ```
