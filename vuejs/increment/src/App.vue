@@ -1,7 +1,17 @@
 <template>
   <img alt="logo" src="./assets/logo.svg">
   
-  <div class="content">
+  <!-- Not Connected -->
+  <div class="content" v-if="!accounts">
+    <!-- Controls -->
+    <div class="button-controls">
+      <!-- Connect -->
+      <button id="connect" class="btn btn-main" @click="connectWallet();">Connect Wallet</button>
+    </div>
+  </div>
+
+  <!-- Connected -->
+  <div class="content" v-else>
 
     <!-- Status Display / User Feedback -->
     <div class="status-display" v-if="!isNaN(counter)">
@@ -33,13 +43,12 @@
 </template>
 
 <script>
-import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
+import { ConstantineInfo } from './chain.info.constantine';
 
-const RPC = process.env.VUE_APP_RPC_ADDRESS;
+const RPC = ConstantineInfo.rpc;
 const ContractAddress = process.env.VUE_APP_CONTRACT_ADDRESS;
-const BECH32_PREFIX = "archway";
 
 export default {
   name: "App",
@@ -47,6 +56,8 @@ export default {
     contract: ContractAddress,
     counter: null,
     cwClient: null,
+    chainMeta: ConstantineInfo,
+    offlineSigner: null,
     gas: {
       price: null
     },
@@ -59,44 +70,63 @@ export default {
     },
     logs: [],
     rpc: RPC,
-    user: null,
-    userAddress: null
+    accounts: null
   }),
-  mounted: async function () {
-    // Init dApp
-    await this.init();
-
-    // Get count
-    let counter = await this.getCount();
-    if (!isNaN(counter.count)) {
-      this.counter = counter.count;
-    } else {
-      console.warn('Error expected numeric value from counter, found: ', typeof counter.count);
-    }
-  },
+  mounted: async function () {},
   methods: {
-    /**
-     * Instances basic settings
-     * @see {File} ./.env
-     * @see {File} ./env.example
-     * @see https://cli.vuejs.org/guide/mode-and-env.html#environment-variables
-     */
-    init: async function () {
-      // Handlers
-      const mnemonic = process.env.VUE_APP_ACCOUNT_MNEMONIC;
-      this.user = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix: BECH32_PREFIX });
-      this.userAddress = process.env.VUE_APP_ACCOUNT_ADDRESS;
-      this.cwClient = await SigningCosmWasmClient.connectWithSigner(this.rpc, this.user);
-      this.handlers.query = this.cwClient.queryClient.wasm.queryContractSmart;
-      // Gas
-      this.gas.price = GasPrice.fromString('0.002uconst');
-      // Debug
-      console.log('dApp Initialized', {
-        user: this.user,
-        client: this.cwClient,
-        handlers: this.handlers,
-        gas: this.gas
-      });
+    connectWallet: async function () {
+      console.log('Connecting wallet...');
+      try {
+        if (window) {
+          if (window['keplr']) {
+            if (window.keplr['experimentalSuggestChain']) {
+              await window.keplr.experimentalSuggestChain(this.chainMeta)
+              await window.keplr.enable(this.chainMeta.chainId);
+              this.offlineSigner = await window.getOfflineSigner(this.chainMeta.chainId);
+              this.cwClient = await SigningCosmWasmClient.connectWithSigner(this.rpc, this.offlineSigner);
+              this.accounts = await this.offlineSigner.getAccounts();
+
+              console.log('Wallet connected', {
+                offlineSigner: this.offlineSigner,
+                cwClient: this.cwClient,
+                accounts: this.accounts,
+                chain: this.chainMeta
+              });
+              // Query ref.
+              this.handlers.query = this.cwClient.queryClient.wasm.queryContractSmart;
+              // Gas
+              this.gas.price = GasPrice.fromString('0.002uconst');
+              // Debug
+              console.log('dApp Initialized', {
+                user: this.accounts[0].address,
+                client: this.cwClient,
+                handlers: this.handlers,
+                gas: this.gas
+              });
+
+              await this.start();
+            } else {
+              console.warn('Error access experimental features, please update Keplr');
+            }
+          } else {
+            console.warn('Error accessing Keplr');
+          }
+        } else {
+          console.warn('Error parsing window object');
+        }
+      } catch (e) {
+        console.error('Error connecting to wallet', e);
+      }
+    },
+    start: async function () {
+      // Get count
+      let counter = await this.getCount();
+      if (!isNaN(counter.count)) {
+        this.counter = counter.count;
+        console.log('Counter updated', this.counter);
+      } else {
+        console.warn('Error expected numeric value from counter, found: ', typeof counter.count);
+      }
     },
     /**
      * Query contract counter
@@ -125,11 +155,11 @@ export default {
      */
     incrementCounter: async function () {
       // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
-      if (!this.user) {
-        console.warn('Error getting user', this.user);
+      if (!this.accounts) {
+        console.warn('Error getting user', this.accounts);
         return;
-      } else if (!this.userAddress) {
-        console.warn('Error getting user address', this.userAddress);
+      } else if (!this.accounts.length) {
+        console.warn('Error getting user', this.accounts);
         return;
       }
       // Prepare Tx
@@ -140,34 +170,40 @@ export default {
         status: true,
         msg: "Incrementing counter..."
       };
-      let txFee = calculateFee(300_000, this.gas.price); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
+      let txFee = calculateFee(300000, this.gas.price); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
       console.log('Tx args', {
-        senderAddress: this.userAddress, 
+        senderAddress: this.accounts[0].address, 
         contractAddress: this.contract, 
         msg: entrypoint, 
         fee: txFee
       });
-      // Send Tx
-      let tx = await this.cwClient.execute(this.userAddress, this.contract, entrypoint, txFee);
-      this.loading.status = false;
-      this.loading.msg = "";
-      console.log('Increment Tx', tx);
-      // Update Logs
-      if (tx.logs) {
-        if (tx.logs.length) {
-          this.logs.unshift({
-            increment: tx.logs,
-            timestamp: new Date().getTime()
-          });
-          console.log('Logs Updated', this.logs);
+      try {
+        // Send Tx
+        let tx = await this.cwClient.execute(this.accounts[0].address, this.contract, entrypoint, txFee);
+        this.loading.status = false;
+        this.loading.msg = "";
+        console.log('Increment Tx', tx);
+        // Update Logs
+        if (tx.logs) {
+          if (tx.logs.length) {
+            this.logs.unshift({
+              increment: tx.logs,
+              timestamp: new Date().getTime()
+            });
+            console.log('Logs Updated', this.logs);
+          }
         }
-      }
-      // Refresh counter display
-      let counter = await this.getCount();
-      if (!isNaN(counter.count)) {
-        this.counter = counter.count;
-      } else {
-        console.warn('Error expected numeric value from counter, found: ', typeof counter.count);
+        // Refresh counter display
+        let counter = await this.getCount();
+        if (!isNaN(counter.count)) {
+          this.counter = counter.count;
+        } else {
+          console.warn('Error expected numeric value from counter, found: ', typeof counter.count);
+        }
+      } catch (e) {
+        console.warn('Error executing Increment', e);
+        this.loading.status = false;
+        this.loading.msg = "";
       }
     },
     /**
@@ -177,11 +213,11 @@ export default {
      */
     resetCounter: async function () {
       // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
-      if (!this.user) {
-        console.warn('Error getting user account', this.user);
+      if (!this.accounts) {
+        console.warn('Error getting user', this.accounts);
         return;
-      } else if (!this.userAddress) {
-        console.warn('Error getting user address', this.userAddress);
+      } else if (!this.accounts.length) {
+        console.warn('Error getting user', this.accounts);
         return;
       }
       // Prepare Tx
@@ -194,28 +230,34 @@ export default {
         status: true,
         msg: "Resetting counter..."
       };
-      let txFee = calculateFee(300_000, this.gas.price); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
+      let txFee = calculateFee(300000, this.gas.price); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
       // Send Tx
-      let tx = await this.cwClient.execute(this.userAddress, this.contract, entrypoint, txFee);
-      console.log('Reset Tx', tx);
-      this.loading.status = false;
-      this.loading.msg = "";
-      // Update Logs
-      if (tx.logs) {
-        if (tx.logs.length) {
-          this.logs.unshift({
-            reset: tx.logs,
-            timestamp: new Date().getTime()
-          });
-          console.log('Logs Updated', this.logs);
+      try {
+        let tx = await this.cwClient.execute(this.accounts[0].address, this.contract, entrypoint, txFee);
+        console.log('Reset Tx', tx);
+        this.loading.status = false;
+        this.loading.msg = "";
+        // Update Logs
+        if (tx.logs) {
+          if (tx.logs.length) {
+            this.logs.unshift({
+              reset: tx.logs,
+              timestamp: new Date().getTime()
+            });
+            console.log('Logs Updated', this.logs);
+          }
         }
-      }
-      // Refresh counter display
-      let counter = await this.getCount();
-      if (!isNaN(counter.count)) {
-        this.counter = counter.count;
-      } else {
-        console.warn('Error expected numeric value from counter, found: ', typeof counter.count);
+        // Refresh counter display
+        let counter = await this.getCount();
+        if (!isNaN(counter.count)) {
+          this.counter = counter.count;
+        } else {
+          console.warn('Error expected numeric value from counter, found: ', typeof counter.count);
+        }
+      } catch (e) {
+        console.warn("Error executing Reset", e);
+        this.loading.status = false;
+        this.loading.msg = "";
       }
     }
   }
