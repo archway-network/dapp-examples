@@ -2,13 +2,12 @@ import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
 
-import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
+import { ConstantineInfo } from './chain.info.constantine';
 
-const RPC = process.env.REACT_APP_RPC_ADDRESS;
+const RPC = ConstantineInfo.rpc;
 const ContractAddress = process.env.REACT_APP_CONTRACT_ADDRESS;
-const BECH32_PREFIX = "archway";
 
 export default class App extends Component {
   constructor(props) {
@@ -17,67 +16,84 @@ export default class App extends Component {
       contract: ContractAddress,
       counter: null,
       cwClient: null,
+      offlineSigner: null,
+      chainMeta: ConstantineInfo,
       gasPrice: null,
       queryHandler: null,
       loadingStatus: false,
       loadingMsg: "",
       logs: [],
       rpc: RPC,
-      user: null,
+      accounts: null,
       userAddress: null
     };
   };
 
-  componentDidMount = async () => {
-    // Init dApp
-    await this.init();
-
-    // Get count
-    let counter = await this.getCount();
-    try {
-      if (!isNaN(counter.count)) {
-        this.setState({ counter: counter.count });
-      } else {
-        console.warn('Error expected numeric value from counter, found: ', typeof counter.count);
-      }
-    } catch (e) {
-      console.warn('Error: failed getting counter value', e);
-    }
-    console.log('State', this.state);
-  };
-
   /**
-     * Instances basic settings
-     * @see {File} ./.env
-     * @see {File} ./env.example
-     * @see https://create-react-app.dev/docs/adding-custom-environment-variables/
-     */
-   init = async () => {
-    // Handlers
-    const mnemonic = process.env.REACT_APP_ACCOUNT_MNEMONIC;
-    let user = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix: BECH32_PREFIX });
-    let userAddress = process.env.REACT_APP_ACCOUNT_ADDRESS;
-    let cwClient = await SigningCosmWasmClient.connectWithSigner(this.state.rpc, user);
-    let queryHandler = cwClient.queryClient.wasm.queryContractSmart;
-    // Gas
-    let gasPrice = GasPrice.fromString('0.002uconst');
+   * Instances basic settings
+   * @see {File} ./.env
+   * @see {File} ./env.example
+   * @see https://create-react-app.dev/docs/adding-custom-environment-variables/
+   */
+   connectWallet = async () => {
+    console.log('Connecting wallet...');
+      try {
+        if (window) {
+          if (window['keplr']) {
+            if (window.keplr['experimentalSuggestChain']) {
+              await window.keplr.experimentalSuggestChain(this.state.chainMeta)
+              await window.keplr.enable(this.state.chainMeta.chainId);              
+              let offlineSigner = await window.getOfflineSigner(this.state.chainMeta.chainId);
+              console.log('offlineSigner', offlineSigner);
+              let cwClient = await SigningCosmWasmClient.connectWithSigner(this.state.rpc, offlineSigner);
+              let accounts = await offlineSigner.getAccounts();
+              let queryHandler = cwClient.queryClient.wasm.queryContractSmart;
+              let gasPrice = GasPrice.fromString('0.002uconst');
+              let userAddress = accounts[0].address;
 
-    // Update state
-    this.setState({
-      user: user,
-      userAddress: userAddress,
-      cwClient: cwClient,
-      queryHandler: queryHandler,
-      gasPrice: gasPrice
-    });
+              // Update state
+              this.setState({
+                accounts: accounts,
+                userAddress: userAddress,
+                cwClient: cwClient,
+                queryHandler: queryHandler,
+                gasPrice: gasPrice,
+                offlineSigner: offlineSigner
+              });
 
-    // Debug
-    console.log('dApp Initialized', {
-      user: this.state.user,
-      client: this.state.cwClient,
-      queryHandler: this.state.queryHandler,
-      gasPrice: this.state.gasPrice
-    });
+              // Debug
+              console.log('dApp Connected', {
+                accounts: this.state.accounts,
+                userAddress: this.state.userAddress,
+                client: this.state.cwClient,
+                queryHandler: this.state.queryHandler,
+                gasPrice: this.state.gasPrice,
+                offlineSigner: this.state.offlineSigner
+              });
+
+              // Get count
+              let counter = await this.getCount();
+              try {
+                if (!isNaN(counter.count)) {
+                  this.setState({ counter: counter.count });
+                } else {
+                  console.warn('Error expected numeric value from counter, found: ', typeof counter.count);
+                }
+              } catch (e) {
+                console.warn('Error: failed getting counter value', e);
+              }
+            } else {
+              console.warn('Error access experimental features, please update Keplr');
+            }
+          } else {
+            console.warn('Error accessing Keplr');
+          }
+        } else {
+          console.warn('Error parsing window object');
+        }
+      } catch (e) {
+        console.error('Error connecting to wallet', e);
+      }
   }
 
   /**
@@ -119,8 +135,8 @@ export default class App extends Component {
    */
   incrementCounter = async () => {
     // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
-    if (!this.state.user) {
-      console.warn('Error getting user', this.state.user);
+    if (!this.state.accounts) {
+      console.warn('Error getting accounts', this.state.accounts);
       return;
     } else if (!this.state.userAddress) {
       console.warn('Error getting user address', this.state.userAddress);
@@ -139,7 +155,7 @@ export default class App extends Component {
     let entrypoint = {
       increment: {}
     };
-    let txFee = calculateFee(300_000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
+    let txFee = calculateFee(300000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
     console.log('Tx args', {
       senderAddress: this.state.userAddress, 
       contractAddress: this.state.contract, 
@@ -147,37 +163,49 @@ export default class App extends Component {
       fee: txFee
     });
     // Send Tx
-    let tx = await this.state.cwClient.execute(this.state.userAddress, this.state.contract, entrypoint, txFee);
-    console.log('Increment Tx', tx);
-    // Update Logs
-    if (tx.logs) {
-      if (tx.logs.length) {
-        tx.logs[0].type = 'increment';
-        tx.logs[0].timestamp = new Date().getTime();
-        this.setState({
-          logs: [JSON.stringify(tx.logs, null, 2), ...this.state.logs]
-        });
+    try {
+      let tx = await this.state.cwClient.execute(this.state.userAddress, this.state.contract, entrypoint, txFee);
+      console.log('Increment Tx', tx);
+      // Update Logs
+      if (tx.logs) {
+        if (tx.logs.length) {
+          tx.logs[0].type = 'increment';
+          tx.logs[0].timestamp = new Date().getTime();
+          this.setState({
+            logs: [JSON.stringify(tx.logs, null, 2), ...this.state.logs]
+          });
+        }
       }
+      // Refresh counter
+      let counter = await this.getCount();
+      let count;
+      if (!isNaN(counter.count)) {
+        count = counter.count;
+      } else {
+        count = this.state.counter;
+        console.warn('Error expected numeric value from counter, found: ', typeof counter.count);
+      }
+      // Render updates
+      loading = {
+        status: false,
+        msg: ""
+      };
+      this.setState({
+        counter: count,
+        loadingStatus: loading.status,
+        loadingMsg: loading.msg
+      });
+    } catch (e) {
+      console.warn('Error exceuting Increment', e);
+      loading = {
+        status: false,
+        msg: ""
+      };
+      this.setState({
+        loadingStatus: loading.status,
+        loadingMsg: loading.msg
+      });
     }
-    // Refresh counter
-    let counter = await this.getCount();
-    let count;
-    if (!isNaN(counter.count)) {
-      count = counter.count;
-    } else {
-      count = this.state.counter;
-      console.warn('Error expected numeric value from counter, found: ', typeof counter.count);
-    }
-    // Render updates
-    loading = {
-      status: false,
-      msg: ""
-    };
-    this.setState({
-      counter: count,
-      loadingStatus: loading.status,
-      loadingMsg: loading.msg
-    });
   }
 
   /**
@@ -187,8 +215,8 @@ export default class App extends Component {
    */
   resetCounter = async () => {
     // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
-    if (!this.state.user) {
-      console.warn('Error getting user account', this.state.user);
+    if (!this.state.accounts) {
+      console.warn('Error getting user account', this.state.accounts);
       return;
     } else if (!this.state.userAddress) {
       console.warn('Error getting user address', this.state.userAddress);
@@ -209,45 +237,58 @@ export default class App extends Component {
         count: 0
       }
     };
-    let txFee = calculateFee(300_000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
+    let txFee = calculateFee(300000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
     // Send Tx
-    let tx = await this.state.cwClient.execute(this.state.userAddress, this.state.contract, entrypoint, txFee);
-    console.log('Reset Tx', tx);
-    // Update Logs
-    if (tx.logs) {
-      if (tx.logs.length) {
-        tx.logs[0].type = 'reset';
-        tx.logs[0].timestamp = new Date().getTime();
-        this.setState({
-          logs: [JSON.stringify(tx.logs, null, 2), ...this.state.logs]
-        });
+    try {
+      let tx = await this.state.cwClient.execute(this.state.userAddress, this.state.contract, entrypoint, txFee);
+      console.log('Reset Tx', tx);
+      // Update Logs
+      if (tx.logs) {
+        if (tx.logs.length) {
+          tx.logs[0].type = 'reset';
+          tx.logs[0].timestamp = new Date().getTime();
+          this.setState({
+            logs: [JSON.stringify(tx.logs, null, 2), ...this.state.logs]
+          });
+        }
       }
+      // Refresh counter
+      let counter = await this.getCount();
+      let count;
+      if (!isNaN(counter.count)) {
+        count = counter.count;
+      } else {
+        count = this.state.counter;
+        console.warn('Error expected numeric value from counter, found: ', typeof counter.count);
+      }
+      // Render updates
+      loading = {
+        status: false,
+        msg: ""
+      };
+      this.setState({
+        counter: count,
+        loadingStatus: loading.status,
+        loadingMsg: loading.msg
+      });
+    } catch (e) {
+      console.warn('Error executing Reset', e);
+      loading = {
+        status: false,
+        msg: ""
+      };
+      this.setState({
+        loadingStatus: loading.status,
+        loadingMsg: loading.msg
+      });
     }
-    // Refresh counter
-    let counter = await this.getCount();
-    let count;
-    if (!isNaN(counter.count)) {
-      count = counter.count;
-    } else {
-      count = this.state.counter;
-      console.warn('Error expected numeric value from counter, found: ', typeof counter.count);
-    }
-    // Render updates
-    loading = {
-      status: false,
-      msg: ""
-    };
-    this.setState({
-      counter: count,
-      loadingStatus: loading.status,
-      loadingMsg: loading.msg
-    });
   }
 
   render() {
     // State
     const counter = this.state.counter;
     const loadingMsg = this.state.loadingMsg;
+    const userAddress = this.state.userAddress;
 
     // Maps
     let logMeta = [];
@@ -268,7 +309,21 @@ export default class App extends Component {
       </div>
     ) : null;
 
-    // Output
+    // Not Connected
+    if (!userAddress) {
+      return (
+        <div className="content">
+          <img src={logo} alt="logo" />
+
+          <div className="button-controls">
+            <button id="connect" className="btn btn-main" onClick={this.connectWallet}>Connect Wallet</button>
+          </div>
+
+        </div>
+      );
+    }
+
+    // Connected
     return (
       <div className="content">
         <img src={logo} alt="logo" />
