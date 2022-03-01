@@ -299,7 +299,10 @@ export default {
     },
     /**
      * Utility function: takes a string as input and outputs its binary value in string format
+     * This function is currently unused, but will be useful later should we decide to implement sending
+     * NFTs with a memo message attached to the transaction
      * @param {String} string : A string to be converted to a binary string
+     * @return {String}
      */
     binString: function (string = '') {
       return string.split('').map(function (char) {
@@ -311,7 +314,6 @@ export default {
      * @see {SigningCosmWasmClient}
      * @param {String} recipient : A recipient contract or wallet address
      * @param {String} tokenId : ID of the token to transferred to `recipient`
-     * @param {String} msg : An optional text message (memo) to be sent along with the tx
      * @see https://github.com/archway-network/archway-templates/blob/feature/cosmwasm-sdt-1.0.0-beta5/cw721/off-chain-metadata/src/msg.rs#L62-L74
      */
     sendNft: async function (recipient = null, tokenId = null, msg = "You now have the melting power") {
@@ -328,10 +330,9 @@ export default {
       } 
       // Prepare Tx
       let entrypoint = {
-        send_nft: {
+        transfer_nft: {
           contract: recipient, // XXX (note): `contract` here seems ambiguous; most times it will be a wallet address (e.g. not a contract)
-          token_id: tokenId,
-          msg: this.binString(msg),
+          token_id: tokenId
         }
       };
       this.loading = {
