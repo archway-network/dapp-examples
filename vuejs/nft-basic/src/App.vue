@@ -48,8 +48,6 @@
       </div>
     </div>
 
-    <!-- XXX TODO: Application view states (see below) -->
-
     <!-- STATES: Market -->
     <div class="market" v-if="currentState == MARKET">
       <h3>Market</h3>
@@ -60,12 +58,62 @@
           <p>There are no NFTs in this collection, try <a class="mint-now" @click="changeDisplayState(1)">minting</a> one</p>
         </div>
 
+        <div v-if="nfts.market.length">
+          <p>{{nfts.market.length}} NFTs display here</p>
+        </div>
+
       </div>
     </div>
 
     <!-- STATES: Mint -->
     <div class="minter" v-if="currentState == MINT">
       <h3>Minter</h3>
+
+      <div class="minting-form">
+        <div class="name">
+          <label for="nft_name"><strong>Name:</strong></label>
+          <input v-model="metadata.ipfsMetadata.name" name="nft_name" class="form-control" type="text" placeholder="My NFT name">
+        </div>
+        <div class="description">
+          <label for="nft_descr"><strong>Description:</strong></label>
+          <textarea v-model="metadata.ipfsMetadata.description" name="nft_descr" class="form-control"></textarea>
+        </div>
+        
+        <div class="image">
+          <p class="art">
+            <label><strong>Art:</strong></label><br/>
+            <span style="font-style:italic;">*accepted file types: png, gif, jpeg</span>
+          </p>
+          <div class="dropzone" :class="{ok: files.length, waiting: !files.length}" @dragover="dragover" @dragleave="dragleave" @drop="drop">
+            <input 
+              type="file" 
+              name="fields[assetsFieldHandle][]" 
+              id="assetsFieldHandle" 
+              class="hidden" 
+              @change="onChange" 
+              ref="file" 
+              accept="image/png, image/gif, image/jpeg"
+            />
+            <label for="assetsFieldHandle" class="block cursor-pointer">
+              <div v-if="!files.length">
+                <p class="instr-t">Drag and drop NFT art here</p>
+              </div>
+            </label>
+            
+            <ul class="files-list-ul" v-cloak>
+              <li class="text-sm p-1" v-for="(file,i) in files" :key="i">
+                <p>{{file.name }}</p>
+                <button class="btn btn-danger btn-reset" type="button" @click="clearFiles();" title="Remove file">Reset</button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="controls minting-controls">
+            <button class="btn btn-primary" @click="ipfsUpload();" :disabled="!files.length || !metadata.ipfsMetadata.description || !metadata.ipfsMetadata.name || isMinting">Mint NFT</button>
+          </div>
+
+        </div>
+      </div>
     </div>
     
     <!-- STATES: My NFTs -->
@@ -78,8 +126,6 @@
       <h3>{{selectedOwner}}'s NFTs</h3>
     </div>
     
-    <!-- END: XXX TODO -->
-    
     <!-- Loading -->
     <div class="loading" v-if="loading.status">
       <p v-if="loading.msg">{{loading.msg}}</p>
@@ -90,7 +136,8 @@
         <p class="label" v-if="log.timestamp">
           <strong>
             <span v-if="log.mint">Minted NFT&nbsp;</span>
-            <span v-if="log.transfer">Transferred NFT:&nbsp;</span>({{log.timestamp}}):</strong>
+            <span v-if="log.transfer">Transferred NFT:&nbsp;</span>({{log.timestamp}}):
+          </strong>
         </p>
         <pre class="log-entry">{{ log }}</pre>
       </div>
@@ -102,6 +149,7 @@
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
+import IPFS from './ipfs';
 
 const RPC = ConstantineInfo.rpc;
 const ContractAddress = process.env.VUE_APP_CONTRACT_ADDRESS;
@@ -140,20 +188,23 @@ export default {
     states: POSSIBLE_STATES,
     currentState: MARKET,
     selectedOwner: null,
+    isMinting: false,
     nfts: {
       user: null,
       market: null
     },
+    ipfs: IPFS,
     metadata: {
       tokenId: null,
       uri: null,
       ipfsMetadata: {
         name: null,
         description: null,
-        date: null,
-        attributes: []
+        image: null,
+        date: null
       }
-    }
+    },
+    files: []
   }),
   mounted: async function () {},
   methods: {
@@ -208,7 +259,7 @@ export default {
         console.error('Error connecting to wallet', e);
       }
     },
-    changeDisplayState: function (state = 0, account = null) {
+    changeDisplayState: async function (state = 0, account = null) {
       if (typeof state !== 'number') {
         return;
       } else if (state < 0 || state > (this.states.length - 1)) {
@@ -221,6 +272,7 @@ export default {
 
       switch (state) {
         case MARKET: {
+          this.nfts.market = await this.getNfts();
           break;
         }
         case MINT: {
@@ -232,6 +284,10 @@ export default {
         }
         case VIEW_OWNER: {
           console.log('Viewing NFTs of owner', account);
+          if (account == this.accounts[0].address) {
+            // XXX TODO: Fix this query
+            // this.nfts.user = await this.getNftsOfOwner();
+          }
           break;
         }
       }
@@ -248,6 +304,77 @@ export default {
           attributes: []
         }
       };
+      this.files = [];
+    },
+    onChange: function () {
+      this.files = this.$refs.file.files;
+      console.log('(onChange) Files:', this.files);
+    },
+    clearFiles: function () {
+      this.files = [];
+    },
+    dragover(event) {
+      event.preventDefault();
+      if (!event.currentTarget.classList.contains('ok')) {
+        event.currentTarget.classList.add('hovering');
+      }
+    },
+    dragleave(event) {
+      event.currentTarget.classList.remove('hovering');
+    },
+    drop(event) {
+      event.preventDefault();
+      this.$refs.file.files = event.dataTransfer.files;
+      this.onChange();
+    },
+    ipfsUpload: async function () {//here
+      if (!this.files.length) {
+        console.warn('Nothing to upload to IPFS');
+        return;
+      }
+
+      this.loading = {
+        status: true,
+        msg: "Uploading art and metadata to IPFS..."
+      };
+
+      this.isMinting = true;
+
+      const reader = new FileReader(); 
+      let file = this.files[0];
+      reader.readAsDataURL(file);
+
+      reader.onload = async () => {
+        console.log('reader.onload', {
+          reader: reader,
+          result: reader.result
+        });
+        try {
+          let uploadTarget = reader.result;
+          let uploadResult = await this.ipfs.upload(uploadTarget);
+          console.log('Successfully uploaded art', uploadResult);
+          // XXX TODO: Upload JSON metadata
+        } catch (e) {
+          console.error('Error uploading file to IPFS: ', e);
+          this.loading.status = false;
+          this.loading.msg = "";
+          return;
+        }
+      };
+      reader.onerror = (e) => {
+        console.error('Error uploading file to IPFS: ', e);
+        this.loading.status = false;
+        this.loading.msg = "";
+        return;
+      };
+
+      console.log('files', this.files);
+      console.log('ipfs', this.ipfs);
+      this.metadata.ipfsMetadata.date = new Date().getTime();
+
+      // XXX TODO: IPFS uploads..
+      // Upload art
+      // Upload JSON
     },
     loadNfts: async function () {
       // Load NFTs
@@ -334,10 +461,15 @@ export default {
         console.warn('Error getting user', this.accounts);
         return;
       }
+
+      // Refresh NFT market to get last minted ID
+      // (Tx. might still fail if multiple users try to mint in the same block)
+      this.nfts.market = await this.getNfts();
+
       // Prepare Tx
       let entrypoint = {
         mint_msg: {
-          token_id: this.metadata.tokenId,
+          token_id: this.nfts.market.length,
           owner: this.accounts[0].address,
           token_uri: this.metadata.uri,
           extension: null, // XXX: null prop?
@@ -356,7 +488,7 @@ export default {
       });
       try {
         // Send Tx
-        let tx = await this.cwClient.execute(this.accounts[0].address, this.contract, entrypoint, txFee);
+        let tx = await this.wasmClient.execute(this.accounts[0].address, this.contract, entrypoint, txFee);
         this.loading.status = false;
         this.loading.msg = "";
         console.log('Mint Tx', tx);
@@ -472,7 +604,7 @@ export default {
       let txFee = calculateFee(300000, this.gas.price); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
       // Send Tx
       try {
-        let tx = await this.cwClient.execute(this.accounts[0].address, this.contract, entrypoint, txFee);
+        let tx = await this.wasmClient.execute(this.accounts[0].address, this.contract, entrypoint, txFee);
         console.log('Transfer Tx', tx);
         this.loading.status = false;
         this.loading.msg = "";
@@ -551,5 +683,44 @@ pre {
 a.mint-now {
   text-decoration: underline !important;
   cursor: pointer;
+}
+div.minting-form div {
+  margin-top: 0.75em;
+}
+.dropzone {
+  border-radius: 1.5rem;
+  padding: 2em;
+  text-align: center;
+}
+.dropzone.ok {
+  border: 2px dotted #ffffff;
+  background: rgba(230,0,115,0.8);
+  color: #ffffff;
+}
+.dropzone.waiting {
+  border: 2px dotted #e0e0e0;
+}
+.dropzone.hovering {
+  background: #e0e0e0;
+  border-color: #000000;
+  color: #000000;
+}
+.dropzone > label {
+  margin-top: 1em;
+}
+[v-cloak] {
+  display: none;
+}
+.cursor-pointer {
+  cursor: pointer;
+}
+.files-list-ul {
+  list-style: none;
+}
+.btn-reset {
+  margin-left: 0.5em;
+}
+.hidden {
+  display: none;
 }
 </style>
