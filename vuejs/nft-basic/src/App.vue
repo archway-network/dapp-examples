@@ -1,4 +1,21 @@
 <template>
+
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav mr-auto">
+        <li class="nav-item">
+          <button class="btn" :class="{'btn-primary': currentState == MARKET, 'btn-inverse': currentState !== MARKET}" @click="changeDisplayState(0)" :disabled="!accounts">Market</button>
+        </li>
+        <li class="nav-item">
+          <button class="btn" :class="{'btn-primary': currentState == MINT, 'btn-inverse': currentState !== MINT}" @click="changeDisplayState(1)" :disabled="!accounts">Mint</button>
+        </li>
+        <li class="nav-item">
+          <button class="btn" :class="{'btn-primary': currentState == VIEW_OWNER && !selectedOwner, 'btn-inverse': currentState !== VIEW_OWNER}" @click="changeDisplayState(3)" :disabled="!accounts">My NFTs</button>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
   <img alt="logo" src="./assets/logo.svg">
   
   <!-- Not Connected -->
@@ -13,17 +30,55 @@
   <!-- Connected -->
   <div class="content" v-else>
 
+    <!-- Account balance -->
+    <div class="accounts" v-if="accounts">
+      <div class="status status-display balances" v-if="accounts.length">
+        <ul class="status accounts-list">
+          <li class="accounts account-item" v-for="(account, i) in accounts" :key="i">
+            <!-- Address -->
+            <strong>Account:</strong>&nbsp;
+            <span>{{account.address}}</span>
+            <!-- Balance -->
+            <div v-if="account.balance">
+              <strong v-if="!isNaN(account.balance.amount)">Balance:</strong>&nbsp;
+              <span v-if="!isNaN(account.balance.amount)">{{parseInt(account.balance.amount) / 100000}} {{chainMeta.currencies[0].coinDenom}}</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- XXX TODO: Application view states (see below) -->
 
+    <!-- STATES: Market -->
+    <div class="market" v-if="currentState == MARKET">
+      <h3>Market</h3>
+
+      <div class="market-items" v-if="nfts.market">
+      
+        <div v-if="!nfts.market.length">
+          <p>There are no NFTs in this collection, try <a class="mint-now" @click="changeDisplayState(1)">minting</a> one</p>
+        </div>
+
+      </div>
+    </div>
+
     <!-- STATES: Mint -->
-    <div class="minter"></div>
+    <div class="minter" v-if="currentState == MINT">
+      <h3>Minter</h3>
+    </div>
+    
     <!-- STATES: My NFTs -->
-    <div class="nfts mine"></div>
+    <div class="nfts mine" v-if="currentState == VIEW_OWNER && !selectedOwner">
+      <h3>My NFTs</h3>
+    </div>
+
     <!-- STATES: View NFTs of Owner -->
-    <div class="nfts address"></div>
+    <div class="nfts address" v-if="currentState == VIEW_OWNER && selectedOwner">
+      <h3>{{selectedOwner}}'s NFTs</h3>
+    </div>
     
     <!-- END: XXX TODO -->
-    
     
     <!-- Loading -->
     <div class="loading" v-if="loading.status">
@@ -60,9 +115,13 @@ const VIEW_OWNER = 3;
 export default {
   name: "App",
   data: () => ({
+    MARKET: MARKET,
+    MINT: MINT,
+    VIEW_TOKEN: VIEW_TOKEN,
+    VIEW_OWNER: VIEW_OWNER,
     contract: ContractAddress,
     counter: null,
-    cwClient: null,
+    wasmClient: null,
     chainMeta: ConstantineInfo,
     offlineSigner: null,
     gas: {
@@ -79,7 +138,7 @@ export default {
     rpc: RPC,
     accounts: null,
     states: POSSIBLE_STATES,
-    currentState: POSSIBLE_STATES[0],
+    currentState: MARKET,
     selectedOwner: null,
     nfts: {
       user: null,
@@ -107,28 +166,35 @@ export default {
               await window.keplr.experimentalSuggestChain(this.chainMeta)
               await window.keplr.enable(this.chainMeta.chainId);
               this.offlineSigner = await window.getOfflineSigner(this.chainMeta.chainId);
-              this.cwClient = await SigningCosmWasmClient.connectWithSigner(this.rpc, this.offlineSigner);
+              this.wasmClient = await SigningCosmWasmClient.connectWithSigner(this.rpc, this.offlineSigner);
               this.accounts = await this.offlineSigner.getAccounts();
 
               console.log('Wallet connected', {
                 offlineSigner: this.offlineSigner,
-                cwClient: this.cwClient,
+                wasmClient: this.wasmClient,
                 accounts: this.accounts,
                 chain: this.chainMeta
               });
               // Query ref.
-              this.handlers.query = this.cwClient.queryClient.wasm.queryContractSmart;
+              this.handlers.query = this.wasmClient.queryClient.wasm.queryContractSmart;
               // Gas
               this.gas.price = GasPrice.fromString('0.002uconst');
               // Debug
               console.log('dApp Initialized', {
                 user: this.accounts[0].address,
-                client: this.cwClient,
+                client: this.wasmClient,
                 handlers: this.handlers,
                 gas: this.gas
               });
 
+              // Constantine account balances ('uconst')
+              if (this.accounts.length) {
+                await this.getBalances();
+              }
+
+              // User and market NFTs
               await this.loadNfts();
+
             } else {
               console.warn('Error access experimental features, please update Keplr');
             }
@@ -145,17 +211,31 @@ export default {
     changeDisplayState: function (state = 0, account = null) {
       if (typeof state !== 'number') {
         return;
-      } else if (state == this.currentState || state < 0 || state > (this.states.length - 1)) {
-        console.warn('An invalid state was selected. State must be an integer within range 0 and ' + (this.states.length - 1));
+      } else if (state < 0 || state > (this.states.length - 1)) {
+        console.warn('An invalid state was selected. State must be an integer within range 0 and ' + (this.states.length - 1), state);
         return;
       }
 
       this.selectedOwner = (account) ? account : null;
       this.currentState = state;
 
-      if (state == MINT) {
-        this.resetMetadataForm();
+      switch (state) {
+        case MARKET: {
+          break;
+        }
+        case MINT: {
+          this.resetMetadataForm();
+          break;
+        }
+        case VIEW_TOKEN: {
+          break;
+        }
+        case VIEW_OWNER: {
+          console.log('Viewing NFTs of owner', account);
+          break;
+        }
       }
+      
     },
     resetMetadataForm: function () {
       this.metadata = {
@@ -173,16 +253,16 @@ export default {
       // Load NFTs
       try {
         // User NFTs
-        this.nfts.user = await this.getNftsOfOwner();
-        console.log('My NFTs', nfts.user);
+        // this.nfts.user = await this.getNftsOfOwner();
+        // console.log('My NFTs', this.nfts.user);
         // All NFTs (of contract)
-        this.nfts.market = await this.getNfts();
-        console.log('All NFTs', nfts.market);
-        console.log('NFTs at contract '+ this.contract +' have been loaded', this.nfts);
+        this.nfts.market = await this.getNfts();//here
+        console.log('All NFTs', this.nfts.market);
+        // console.log('NFTs at contract '+ this.contract +' have been loaded', this.nfts);
       } catch (e) {
         console.error('Error loading NFTs', { 
           nfts: this.nfts, 
-          user: this.accounts, 
+          user: this.accounts,
           error: e 
         });
       }
@@ -193,9 +273,7 @@ export default {
      * @see https://github.com/archway-network/archway-templates/blob/feature/cosmwasm-sdt-1.0.0-beta5/cw721/off-chain-metadata/src/query.rs#L82-L105
      */
     getNftsOfOwner: async function (address = false) {
-      let defaults = false;
       if (!address) {
-        defaults = true;
         if (!this.accounts) {
           console.warn('User address is required; nothing to query', address, this.accounts);
           return;
@@ -210,6 +288,9 @@ export default {
       let entrypoint = {
         tokens: address
       };
+
+      console.log('Entrypoint', [entrypoint, this.contract]);//here
+
       this.loading = {
         status: true,
         msg: "Loading NFTs of address "+ address +"..."
@@ -225,7 +306,7 @@ export default {
      * @see {SigningCosmWasmClient}
      * @see https://github.com/archway-network/archway-templates/blob/feature/cosmwasm-sdt-1.0.0-beta5/cw721/off-chain-metadata/src/query.rs#L107-L124
      */
-    getNfts: async function (address = false) {
+    getNfts: async function () {
       let entrypoint = {
         all_tokens: {}
       };
@@ -291,10 +372,59 @@ export default {
         }
         // Refresh NFT collections (all NFTs and NFTs owned by end user)
         await this.loadNfts();
+        if (this.accounts.length) {
+          await this.getBalances();
+        }
       } catch (e) {
         console.warn('Error executing mint tx', e);
         this.loading.status = false;
         this.loading.msg = "";
+      }
+    },
+    getBalances: async function () {
+      if (!this.chainMeta) {
+        return;
+      } else if (!this.chainMeta['chainName']) {
+        return;
+      } else if (!this.chainMeta['currencies']) {
+        return;
+      } else if (!this.chainMeta.currencies.length) {
+        return;
+      }
+      this.loading = {
+        status: true,
+        msg: "Updating account balances..."
+      };
+      if (this.accounts) {
+        if (this.accounts.length) {
+          for (let i = 0; i < this.accounts.length; i++) {
+            if (this.accounts[i]['address']) {
+              try {
+                console.log('address', this.accounts[i].address);
+                let balance = await this.wasmClient.getBalance(this.accounts[i].address, this.chainMeta.currencies[0].coinMinimalDenom);
+                this.accounts[i].balance = balance;
+                this.loading.status = false;
+                this.loading.msg = "";
+                console.log('Balance updated', this.accounts[i].balance);
+              } catch (e) {
+                console.warn('Error reading account address', [String(e), this.accounts[i]]);
+                this.loading.status = false;
+                this.loading.msg = "";
+                return;
+              }
+            } else {
+              console.warn('Failed to resolve account address at index ' + i, this.accounts[i]);
+            }
+          }
+        } else {
+          this.loading.status = false;
+          this.loading.msg = "";
+          console.warn('Failed to resolve Keplr wallet');
+        }
+      } else {
+        this.loading.status = false;
+        this.loading.msg = "";
+        console.warn('Failed to resolve Keplr wallet');
       }
     },
     /**
@@ -316,7 +446,7 @@ export default {
      * @param {String} tokenId : ID of the token to transferred to `recipient`
      * @see https://github.com/archway-network/archway-templates/blob/feature/cosmwasm-sdt-1.0.0-beta5/cw721/off-chain-metadata/src/msg.rs#L62-L74
      */
-    sendNft: async function (recipient = null, tokenId = null, msg = "You now have the melting power") {
+    transferNft: async function (recipient = null, tokenId = null) {
       // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
       if (!this.accounts) {
         console.warn('Error getting user', this.accounts);
@@ -324,7 +454,7 @@ export default {
       } else if (!this.accounts.length) {
         console.warn('Error getting user', this.accounts);
         return;
-      } else if (!token_id || !recipient) {
+      } else if (!tokenId || !recipient) {
         console.warn('Nothing to transfer (check token ID and recipient address)', {token_id: tokenId, recipient: recipient});
         return;
       } 
@@ -358,6 +488,9 @@ export default {
         }
         // Refresh NFT collections (all NFTs and NFTs owned by end user)
         await this.loadNfts();
+        if (this.accounts.length) {
+          await this.getBalances();
+        }
       } catch (e) {
         console.warn("Error executing NFT transfer", e);
         this.loading.status = false;
@@ -375,7 +508,13 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;
+  margin-top: calc(60px + 86px);
+}
+nav {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  right: 0;
 }
 div.content {
   text-align: left;
@@ -408,5 +547,9 @@ pre {
   background-color: #73c8eb;
   border-color: #3bb3e3;
   border-radius: 0.5em;
+}
+a.mint-now {
+  text-decoration: underline !important;
+  cursor: pointer;
 }
 </style>
