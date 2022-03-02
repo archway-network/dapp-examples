@@ -59,7 +59,25 @@
         </div>
 
         <div v-if="nfts.market.tokens.length">
-          <p>{{nfts.market.tokens.length}} NFTs display here</p>
+          <div class="card-deck">
+            <div class="card" v-for="(token,i) in nfts.market.tokens" :key="i">
+              <img class="card-img-top" :src="token.image" v-if="token.image">
+              <div class="card-body">
+                <h5 class="card-title" v-if="token.name">{{token.name}}</h5>
+                <p class="card-text" v-if="token.description">{{token.description}}</p>
+                <div class="id" v-if="token.id">
+                  <p><strong>Token ID:</strong> {{token.id}}</p>
+                </div>
+                <div class="owner" v-if="token.owner">
+                  <p>
+                    <strong>Owned by:</strong>&nbsp;
+                    <span v-if="token.owner !== accounts[0].address">{{token.owner}}</span>
+                    <span v-if="token.owner == accounts[0].address">You</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -119,6 +137,26 @@
     <!-- STATES: My NFTs -->
     <div class="nfts mine" v-if="currentState == VIEW_OWNER && !selectedOwner">
       <h3>My NFTs</h3>
+
+      <div v-if="nfts.market.tokens.length">
+        <div class="card-deck">
+          <div class="card" v-for="(token,i) in myNfts" :key="i">
+            <img class="card-img-top" :src="token.image" v-if="token.image">
+            <div class="card-body">
+              <h5 class="card-title" v-if="token.name">{{token.name}}</h5>
+              <p class="card-text" v-if="token.description">{{token.description}}</p>
+              <div class="id" v-if="token.id">
+                <p><strong>Token ID:</strong> {{token.id}}</p>
+              </div>
+              <div class="owner" v-if="token.owner">
+                <p>
+                  <strong>Owned by:</strong>&nbsp;<span>You</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- STATES: View NFTs of Owner -->
@@ -149,6 +187,7 @@
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
+import axios from 'axios';
 import ipfsClient from './ipfs';
 
 const RPC = ConstantineInfo.rpc;
@@ -173,6 +212,7 @@ export default {
     contract: ContractAddress,
     counter: null,
     wasmClient: null,
+    axios: axios,
     chainMeta: ConstantineInfo,
     offlineSigner: null,
     gas: {
@@ -194,7 +234,8 @@ export default {
     isMinting: false,
     nfts: {
       user: null,
-      market: null
+      market: null,
+      metadata: {}
     },
     ipfs: ipfsClient.IPFS,
     metadata: {
@@ -276,7 +317,7 @@ export default {
 
       switch (state) {
         case MARKET: {
-          this.nfts.market = await this.getNfts();
+          this.loadNfts();
           break;
         }
         case MINT: {
@@ -288,10 +329,6 @@ export default {
         }
         case VIEW_OWNER: {
           console.log('Viewing NFTs of owner', account);
-          if (account == this.accounts[0].address) {
-            // XXX TODO: Fix this query
-            // this.nfts.user = await this.getNftsOfOwner();
-          }
           break;
         }
       }
@@ -366,8 +403,8 @@ export default {
             status: true,
             msg: "Uploading metadata to IPFS..."
           };
-          this.metadata.ipfsMetadata.image = IPFS_PREFIX + String(uploadResult.cid); + IPFS_SUFFIX;
           this.metadata.ipfsMetadata.date = new Date().getTime();
+          this.metadata.ipfsMetadata.image = IPFS_PREFIX + String(uploadResult.cid); + IPFS_SUFFIX;
           
           let json = JSON.stringify(this.metadata.ipfsMetadata);
           const blob = new Blob([json], {type:"application/json"});
@@ -397,16 +434,19 @@ export default {
         return;
       };
     },
-    loadNfts: async function () {
+    loadNfts: async function () { // XXX TODO: Fix request tokens of address
       // Load NFTs
       try {
         // User NFTs
         // this.nfts.user = await this.getNftsOfOwner();
         // console.log('My NFTs', this.nfts.user);
         // All NFTs (of contract)
-        this.nfts.market = await this.getNfts();//here
+        this.nfts.market = await this.getNfts();
         console.log('All NFTs', this.nfts.market);
         // console.log('NFTs at contract '+ this.contract +' have been loaded', this.nfts);
+
+        // Iterate ID's and get token data
+        await this.loadNftData();
       } catch (e) {
         console.error('Error loading NFTs', { 
           nfts: this.nfts, 
@@ -415,39 +455,80 @@ export default {
         });
       }
     },
-    /**
-     * Query contract for NFTs at address, or of the end user if no address is provided
-     * @see {SigningCosmWasmClient}
-     * @see https://github.com/archway-network/archway-templates/blob/feature/cosmwasm-sdt-1.0.0-beta5/cw721/off-chain-metadata/src/query.rs#L82-L105
-     */
-    getNftsOfOwner: async function (address = false) {
-      if (!address) {
-        if (!this.accounts) {
-          console.warn('User address is required; nothing to query', address, this.accounts);
-          return;
-        } else if (!this.accounts.length) {
-          console.warn('User address is required; nothing to query', address, this.accounts);
-          return;
-        } else {
-          address = this.accounts[0].address;
-        }
+    loadNftData: async function () {
+      if (!this.nfts.market) {
+        console.warn('No NFTs; nothing to query', this.nfts.market);
+        return;
+      } else if (!this.nfts.market.tokens) {
+        console.warn('No NFTs; nothing to query', this.nfts.market);
+        return;
+      }
+
+      for (let i = 0; i < this.nfts.market.tokens.length; i++) {
+        let id = this.nfts.market.tokens[i];
+        console.log('Requesting data for token ' + id);
+        let data = await this.getTokenMeta(id);
+        let resolvedMetadata = data;
+        resolvedMetadata.id = id;
+        this.nfts.market.tokens[i] = resolvedMetadata;
+        // console.log('Data resolution', this.nfts.market.tokens);
+      }
+
+    },
+    getTokenMeta: async function (tokenId = false) {
+      if (!tokenId || typeof tokenId !== 'string') {
+        console.warn('Invalid token ID. Token ID must be a string, but got ' + typeof tokenId);
+        return;
       }
 
       let entrypoint = {
-        tokens: address
+        nft_info: {
+          token_id: tokenId
+        }
       };
-
-      console.log('Entrypoint', [entrypoint, this.contract]);
 
       this.loading = {
         status: true,
-        msg: "Loading NFTs of address "+ address +"..."
+        msg: "Loading NFT data of token " + tokenId + "..."
       };
+
       let query = await this.handlers.query(this.contract, entrypoint);
-      console.log('NFT contract queried using address ' + address, query);
+
+      // Resolve IPFS metadata
+      const httpClient = axios.create();
+      let ipfsEndpoint = query['token_uri'];
+      let httpEndpoint = ipfsEndpoint.replace('ipfs://', this.ipfs.ipfsGateway);
+      let result = await httpClient.get(httpEndpoint);
+      
+      // DEBUG (axios res.):
+      // console.log('Axios res.', result);
+
+      if (result.data) {
+        if (result.data.image) {
+          result.data.image = result.data.image.replace('ipfs://', this.ipfs.ipfsGateway);
+        }
+      }
+
+      entrypoint = {
+        owner_of: {
+          token_id: tokenId
+        }
+      }
+
+      let ownerQuery = await this.handlers.query(this.contract, entrypoint);
+      if (ownerQuery['owner']) {
+        result.data.owner = ownerQuery.owner;
+      }
+      if (ownerQuery['approvals']) {
+        result.data.approvals = ownerQuery.approvals;
+      }
+      
+      console.log('NFT contract succesfully  queried for token ID ' + tokenId, [query, ownerQuery]);
+
+      // Graceful exit
       this.loading.status = false;
       this.loading.msg = "";
-      return query;
+      return (result.data) ? result.data : query;
     },
     /**
      * Load NFTs of entire marketplace
@@ -485,8 +566,8 @@ export default {
 
       // Refresh NFT market to get last minted ID
       // (Tx. might still fail if multiple users try to mint in the same block)
-      this.nfts.market = await this.getNfts();
-      console.log('this.nfts.market', this.nfts.market);
+      this.loadNfts();
+      // console.log('this.nfts.market', this.nfts.market);
 
       // Prepare Tx
       let entrypoint = {
@@ -589,18 +670,6 @@ export default {
       }
     },
     /**
-     * Utility function: takes a string as input and outputs its binary value in string format
-     * This function is currently unused, but will be useful later should we decide to implement sending
-     * NFTs with a memo message attached to the transaction
-     * @param {String} string : A string to be converted to a binary string
-     * @return {String}
-     */
-    binString: function (string = '') {
-      return string.split('').map(function (char) {
-        return char.charCodeAt(0).toString(2);
-      }).join(' ');
-    },
-    /**
      * Transfer an NFT to another user
      * @see {SigningCosmWasmClient}
      * @param {String} recipient : A recipient contract or wallet address
@@ -657,6 +726,28 @@ export default {
         this.loading.status = false;
         this.loading.msg = "";
       }
+    }
+  },
+  computed: {
+    myNfts: function () {
+      if (!this.nfts.market) {
+        return [];
+      } else if (!this.nfts.market.tokens) {
+        return [];
+      } else if (!this.nfts.market.tokens.length) {
+        return [];
+      } else if (!this.accounts) {
+        return [];
+      } else if (!this.accounts.length) {
+        return [];
+      }
+
+      return this.nfts.market.tokens.filter((token) => {
+        if (token.owner) {
+          if (token.owner == this.accounts[0].address)
+            return token;
+        }
+      });
     }
   }
 }
@@ -751,5 +842,16 @@ div.minting-form div {
 }
 .hidden {
   display: none;
+}
+.card {
+  max-width: 300px;
+}
+.card-img-top {
+  cursor: -moz-zoom-in; 
+  cursor: -webkit-zoom-in;
+  cursor: zoom-in;
+}
+.card-img-top:hover {
+  transform: scale(2.5);
 }
 </style>
