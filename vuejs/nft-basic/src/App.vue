@@ -54,12 +54,12 @@
 
       <div class="market-items" v-if="nfts.market">
       
-        <div v-if="!nfts.market.length">
+        <div v-if="!nfts.market.tokens.length">
           <p>There are no NFTs in this collection, try <a class="mint-now" @click="changeDisplayState(1)">minting</a> one</p>
         </div>
 
-        <div v-if="nfts.market.length">
-          <p>{{nfts.market.length}} NFTs display here</p>
+        <div v-if="nfts.market.tokens.length">
+          <p>{{nfts.market.tokens.length}} NFTs display here</p>
         </div>
 
       </div>
@@ -381,7 +381,7 @@ export default {
             this.metadata.uri = IPFS_PREFIX + String(metadataUploadResult.cid) + IPFS_SUFFIX;
             
             // Mint NFT
-            // await this.mintNft();
+            await this.mintNft();
           }
         } catch (e) {
           console.error('Error uploading file to IPFS: ', e);
@@ -486,16 +486,20 @@ export default {
       // Refresh NFT market to get last minted ID
       // (Tx. might still fail if multiple users try to mint in the same block)
       this.nfts.market = await this.getNfts();
+      console.log('this.nfts.market', this.nfts.market);
 
       // Prepare Tx
       let entrypoint = {
-        mint_msg: {
-          token_id: this.nfts.market.length,
+        mint: {
+          token_id: String(this.nfts.market.tokens.length),
           owner: this.accounts[0].address,
           token_uri: this.metadata.uri,
           extension: null, // XXX: null prop?
         }
       };
+
+      console.log('Entrypoint', entrypoint);
+
       this.loading = {
         status: true,
         msg: "Minting NFT..."
