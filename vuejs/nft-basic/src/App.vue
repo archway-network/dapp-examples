@@ -149,10 +149,13 @@
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
-import IPFS from './ipfs';
+import ipfsClient from './ipfs';
 
 const RPC = ConstantineInfo.rpc;
 const ContractAddress = process.env.VUE_APP_CONTRACT_ADDRESS;
+
+const IPFS_PREFIX = 'ipfs://';
+const IPFS_SUFFIX = '/';
 
 const POSSIBLE_STATES = ['market','mint','token','owner'];
 const MARKET = 0;
@@ -193,7 +196,7 @@ export default {
       user: null,
       market: null
     },
-    ipfs: IPFS,
+    ipfs: ipfsClient.IPFS,
     metadata: {
       tokenId: null,
       uri: null,
@@ -204,7 +207,8 @@ export default {
         date: null
       }
     },
-    files: []
+    files: [],
+    image: null
   }),
   mounted: async function () {},
   methods: {
@@ -300,11 +304,12 @@ export default {
         ipfsMetadata: {
           name: null,
           description: null,
-          date: null,
-          attributes: []
+          date: null
         }
       };
       this.files = [];
+      this.image = null;
+      this.isMinting = false;
     },
     onChange: function () {
       this.files = this.$refs.file.files;
@@ -327,7 +332,7 @@ export default {
       this.$refs.file.files = event.dataTransfer.files;
       this.onChange();
     },
-    ipfsUpload: async function () {//here
+    ipfsUpload: async function () {
       if (!this.files.length) {
         console.warn('Nothing to upload to IPFS');
         return;
@@ -335,25 +340,49 @@ export default {
 
       this.loading = {
         status: true,
-        msg: "Uploading art and metadata to IPFS..."
+        msg: "Uploading art to IPFS..."
       };
 
       this.isMinting = true;
 
+      // Art upload
       const reader = new FileReader(); 
       let file = this.files[0];
       reader.readAsDataURL(file);
 
-      reader.onload = async () => {
-        console.log('reader.onload', {
-          reader: reader,
-          result: reader.result
-        });
+      reader.onload = async (event) => {
+        this.image = event.target.result;
+        // console.log('reader.onload', {
+        //   reader: reader,
+        //   result: reader.result,
+        //   image: this.image
+        // });
         try {
-          let uploadTarget = reader.result;
-          let uploadResult = await this.ipfs.upload(uploadTarget);
-          console.log('Successfully uploaded art', uploadResult);
-          // XXX TODO: Upload JSON metadata
+          let uploadResult = await this.ipfs.upload(this.image);
+          console.log('Successfully uploaded art', [uploadResult, String(uploadResult.cid)]);
+          
+          // Metadata upload (json)
+          this.loading = {
+            status: true,
+            msg: "Uploading metadata to IPFS..."
+          };
+          this.metadata.ipfsMetadata.image = IPFS_PREFIX + String(uploadResult.cid); + IPFS_SUFFIX;
+          this.metadata.ipfsMetadata.date = new Date().getTime();
+          
+          let json = JSON.stringify(this.metadata.ipfsMetadata);
+          const blob = new Blob([json], {type:"application/json"});
+          const jsonReader = new FileReader();
+          jsonReader.readAsDataURL(blob);
+
+          jsonReader.onload = async (event) => {
+            let jsonUploadTarget = event.target.result;
+            let metadataUploadResult = await this.ipfs.upload(jsonUploadTarget);
+            console.log('Successfully uploaded JSON metadata to IPFS', [metadataUploadResult, String(metadataUploadResult.cid)]);
+            this.metadata.uri = IPFS_PREFIX + String(metadataUploadResult.cid) + IPFS_SUFFIX;
+            
+            // Mint NFT
+            // await this.mintNft();
+          }
         } catch (e) {
           console.error('Error uploading file to IPFS: ', e);
           this.loading.status = false;
@@ -367,14 +396,6 @@ export default {
         this.loading.msg = "";
         return;
       };
-
-      console.log('files', this.files);
-      console.log('ipfs', this.ipfs);
-      this.metadata.ipfsMetadata.date = new Date().getTime();
-
-      // XXX TODO: IPFS uploads..
-      // Upload art
-      // Upload JSON
     },
     loadNfts: async function () {
       // Load NFTs
@@ -416,7 +437,7 @@ export default {
         tokens: address
       };
 
-      console.log('Entrypoint', [entrypoint, this.contract]);//here
+      console.log('Entrypoint', [entrypoint, this.contract]);
 
       this.loading = {
         status: true,
@@ -452,7 +473,7 @@ export default {
      * @see {SigningCosmWasmClient}
      * @see https://github.com/drewstaylor/archway-template/blob/main/src/contract.rs#L42
      */
-    mintNft: async function () {
+    mintNft: async function () {//here
       // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
       if (!this.accounts) {
         console.warn('Error getting user', this.accounts);
@@ -492,6 +513,10 @@ export default {
         this.loading.status = false;
         this.loading.msg = "";
         console.log('Mint Tx', tx);
+
+        // Reset minting form
+        this.resetMetadataForm();
+
         // Update Logs
         if (tx.logs) {
           if (tx.logs.length) {
