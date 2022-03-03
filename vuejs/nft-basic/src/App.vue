@@ -153,6 +153,20 @@
                   <strong>Owned by:</strong>&nbsp;<span>You</span>
                 </p>
               </div>
+              <div class="controls transfer-controls">
+                <button class="btn btn-primary btn-send" @click="transferring.tokenId = token.id" v-if="transferring.tokenId !== token.id">Send</button>
+                <button class="btn btn-danger btn-cancel" @click="transferring.tokenId = null;" v-if="transferring.tokenId == token.id">Cancel</button>
+                <!-- Transfer NFT -->
+                <div :class="'transfer transfer-'+i" v-if="transferring.tokenId == token.id">
+                  <!-- Token: ID -->
+                  <label :for="'nft_id'+i"><strong>ID:</strong></label>
+                  <input v-model="transferring.tokenId" :name="'nft_id_'+i" class="form-control" type="text" readonly>
+                  <!-- Token: Receiving Address -->
+                  <label class="recipient" :for="'nft_transfer_'+i"><strong>Recipient:</strong></label>
+                  <input v-model="transferring.recipient" :name="'nft_transfer_'+i" class="form-control" type="text" placeholder="archway1f395p0gg67mmfd5zcqvpnp9cxnu0hg6r9hfczq">
+                  <button class="btn btn-primary btn-send" :disabled="!transferring.recipient || !transferring.tokenId || isSending" @click="handleTransfer();">Send</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -169,7 +183,14 @@
       <p v-if="loading.msg">{{loading.msg}}</p>
     </div>
 
-    <div class="logs" v-if="logs.length">
+    <div class="controls logs" v-if="logs.length && !showLogs">
+      <button class="btn btn-inverse" @click="showLogs = true;">Show Logs</button>
+    </div>
+
+    <div class="logs" v-if="logs.length && showLogs">
+      <div class="controls">
+        <button class="btn btn-inverse" @click="showLogs = false;">Hide Logs</button>
+      </div>
       <div v-for="(log,i) in logs" :key="i">
         <p class="label" v-if="log.timestamp">
           <strong>
@@ -226,18 +247,20 @@ export default {
       msg: ""
     },
     logs: [],
+    showLogs: true,
     rpc: RPC,
+    ipfs: ipfsClient.IPFS,
     accounts: null,
     states: POSSIBLE_STATES,
     currentState: MARKET,
     selectedOwner: null,
     isMinting: false,
+    isSending: false,
     nfts: {
       user: null,
       market: null,
       metadata: {}
     },
-    ipfs: ipfsClient.IPFS,
     metadata: {
       tokenId: null,
       uri: null,
@@ -247,6 +270,10 @@ export default {
         image: null,
         date: null
       }
+    },
+    transferring: {
+      recipient: null,
+      tokenId: null
     },
     files: [],
     image: null
@@ -554,7 +581,7 @@ export default {
      * @see {SigningCosmWasmClient}
      * @see https://github.com/drewstaylor/archway-template/blob/main/src/contract.rs#L42
      */
-    mintNft: async function () {//here
+    mintNft: async function () {
       // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
       if (!this.accounts) {
         console.warn('Error getting user', this.accounts);
@@ -669,6 +696,13 @@ export default {
         console.warn('Failed to resolve Keplr wallet');
       }
     },
+    handleTransfer: async function () {
+      if (!this.transferring.tokenId || !this.transferring.recipient || this.isSending) {
+        console.warn('Nothing to transfer (check token ID and recipient address)', this.transferring);
+        return;
+      } 
+      await this.transferNft(this.transferring.recipient, this.transferring.tokenId);
+    },
     /**
      * Transfer an NFT to another user
      * @see {SigningCosmWasmClient}
@@ -687,14 +721,15 @@ export default {
       } else if (!tokenId || !recipient) {
         console.warn('Nothing to transfer (check token ID and recipient address)', {token_id: tokenId, recipient: recipient});
         return;
-      } 
+      }
       // Prepare Tx
       let entrypoint = {
         transfer_nft: {
-          contract: recipient, // XXX (note): `contract` here seems ambiguous; most times it will be a wallet address (e.g. not a contract)
+          recipient: recipient,
           token_id: tokenId
         }
       };
+      this.isSending = true;
       this.loading = {
         status: true,
         msg: "Transferring NFT to "+ recipient +"..."
@@ -706,6 +741,8 @@ export default {
         console.log('Transfer Tx', tx);
         this.loading.status = false;
         this.loading.msg = "";
+        this.isSending = false;
+
         // Update Logs
         if (tx.logs) {
           if (tx.logs.length) {
@@ -716,7 +753,7 @@ export default {
             console.log('Logs Updated', this.logs);
           }
         }
-        // Refresh NFT collections (all NFTs and NFTs owned by end user)
+        // Refresh NFT collections and balances
         await this.loadNfts();
         if (this.accounts.length) {
           await this.getBalances();
@@ -773,7 +810,7 @@ div.content {
   margin: auto;
   margin-top: 3em;
   width: 90vw;
-  max-width: 1280px;
+  max-width: 1440px;
 }
 div.content ul {
   list-style: none;
@@ -799,6 +836,9 @@ pre {
   background-color: #73c8eb;
   border-color: #3bb3e3;
   border-radius: 0.5em;
+}
+div.logs {
+  margin-top: 4em;
 }
 a.mint-now {
   text-decoration: underline !important;
@@ -844,7 +884,9 @@ div.minting-form div {
   display: none;
 }
 .card {
-  max-width: 300px;
+  min-width: 420px;
+  max-width: 420px;
+  margin: 15px !important;
 }
 .card-img-top {
   cursor: -moz-zoom-in; 
@@ -852,6 +894,17 @@ div.minting-form div {
   cursor: zoom-in;
 }
 .card-img-top:hover {
+  position: absolute;
+  top: 5%;
   transform: scale(2.5);
+  z-index: 9999;
+}
+.btn,
+.btn-send,
+.btn-cancel {
+  margin-left: 0;
+}
+label.recipient {
+  margin-top: 1rem;
 }
 </style>
