@@ -90,11 +90,11 @@
       <div class="minting-form">
         <div class="name">
           <label for="nft_name"><strong>Name:</strong></label>
-          <input v-model="metadata.ipfsMetadata.name" name="nft_name" class="form-control" type="text" placeholder="My NFT name">
+          <input v-model="metadata.name" name="nft_name" class="form-control" type="text" placeholder="My NFT name">
         </div>
         <div class="description">
           <label for="nft_descr"><strong>Description:</strong></label>
-          <textarea v-model="metadata.ipfsMetadata.description" name="nft_descr" class="form-control"></textarea>
+          <textarea v-model="metadata.description" name="nft_descr" class="form-control"></textarea>
         </div>
         
         <div class="image">
@@ -127,7 +127,8 @@
           </div>
 
           <div class="controls minting-controls">
-            <button class="btn btn-primary" @click="ipfsUpload();" :disabled="!files.length || !metadata.ipfsMetadata.description || !metadata.ipfsMetadata.name || isMinting">Mint NFT</button>
+            <!-- //here -->
+            <button class="btn btn-primary" @click="ipfsUpload();" :disabled="!files.length || !metadata.description || !metadata.name || isMinting">Mint NFT</button>
           </div>
 
         </div>
@@ -261,15 +262,10 @@ export default {
       market: null,
       metadata: {}
     },
-    metadata: {
-      tokenId: null,
-      uri: null,
-      ipfsMetadata: {
-        name: null,
-        description: null,
-        image: null,
-        date: null
-      }
+    metadata: {//here
+      name: null,
+      description: null,
+      image: null
     },
     transferring: {
       recipient: null,
@@ -363,13 +359,9 @@ export default {
     },
     resetMetadataForm: function () {
       this.metadata = {
-        tokenId: null,
-        uri: null,
-        ipfsMetadata: {
-          name: null,
-          description: null,
-          date: null
-        }
+        image: null,
+        name: null,
+        description: null,
       };
       this.files = [];
       this.image = null;
@@ -396,7 +388,7 @@ export default {
       this.$refs.file.files = event.dataTransfer.files;
       this.onChange();
     },
-    ipfsUpload: async function () {
+    ipfsUpload: async function () {//here
       if (!this.files.length) {
         console.warn('Nothing to upload to IPFS');
         return;
@@ -424,29 +416,31 @@ export default {
         try {
           let uploadResult = await this.ipfs.upload(this.image);
           console.log('Successfully uploaded art', [uploadResult, String(uploadResult.cid)]);
+          this.metadata.image = IPFS_PREFIX + String(uploadResult.cid); + IPFS_SUFFIX;
           
-          // Metadata upload (json)
-          this.loading = {
-            status: true,
-            msg: "Uploading metadata to IPFS..."
-          };
-          this.metadata.ipfsMetadata.date = new Date().getTime();
-          this.metadata.ipfsMetadata.image = IPFS_PREFIX + String(uploadResult.cid); + IPFS_SUFFIX;
+          // // Metadata upload (json)
+          // this.loading = {
+          //   status: true,
+          //   msg: "Uploading metadata to IPFS..."
+          // };
+          // this.metadata.ipfsMetadata.date = new Date().getTime();
+          // this.metadata.ipfsMetadata.image = IPFS_PREFIX + String(uploadResult.cid); + IPFS_SUFFIX;
           
-          let json = JSON.stringify(this.metadata.ipfsMetadata);
-          const blob = new Blob([json], {type:"application/json"});
-          const jsonReader = new FileReader();
-          jsonReader.readAsDataURL(blob);
+          // let json = JSON.stringify(this.metadata.ipfsMetadata);
+          // const blob = new Blob([json], {type:"application/json"});
+          // const jsonReader = new FileReader();
+          // jsonReader.readAsDataURL(blob);
 
-          jsonReader.onload = async (event) => {
-            let jsonUploadTarget = event.target.result;
-            let metadataUploadResult = await this.ipfs.upload(jsonUploadTarget);
-            console.log('Successfully uploaded JSON metadata to IPFS', [metadataUploadResult, String(metadataUploadResult.cid)]);
-            this.metadata.uri = IPFS_PREFIX + String(metadataUploadResult.cid) + IPFS_SUFFIX;
+          // jsonReader.onload = async (event) => {
+          //   let jsonUploadTarget = event.target.result;
+          //   let metadataUploadResult = await this.ipfs.upload(jsonUploadTarget);
+          //   console.log('Successfully uploaded JSON metadata to IPFS', [metadataUploadResult, String(metadataUploadResult.cid)]);
+          //   this.metadata.uri = IPFS_PREFIX + String(metadataUploadResult.cid) + IPFS_SUFFIX;
             
-            // Mint NFT
-            await this.mintNft();
-          }
+          //   // Mint NFT
+          //   await this.mintNft();
+          // }
+          await this.mintNft();
         } catch (e) {
           console.error('Error uploading file to IPFS: ', e);
           this.loading.status = false;
@@ -601,8 +595,7 @@ export default {
         mint: {
           token_id: String(this.nfts.market.tokens.length),
           owner: this.accounts[0].address,
-          token_uri: this.metadata.uri,
-          extension: null, // XXX: null prop?
+          extension: this.metadata,//here
         }
       };
 
