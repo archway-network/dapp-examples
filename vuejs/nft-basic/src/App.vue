@@ -61,19 +61,21 @@
         <div v-if="nfts.market.tokens.length">
           <div class="card-deck">
             <div class="card" v-for="(token,i) in nfts.market.tokens" :key="i">
-              <img class="card-img-top" :src="token.image" v-if="token.image">
-              <div class="card-body">
-                <h5 class="card-title" v-if="token.name">{{token.name}}</h5>
-                <p class="card-text" v-if="token.description">{{token.description}}</p>
-                <div class="id" v-if="token.id">
-                  <p><strong>Token ID:</strong> {{token.id}}</p>
-                </div>
-                <div class="owner" v-if="token.owner">
-                  <p>
-                    <strong>Owned by:</strong>&nbsp;
-                    <span v-if="token.owner !== accounts[0].address">{{token.owner}}</span>
-                    <span v-if="token.owner == accounts[0].address">You</span>
-                  </p>
+              <div class="wrapper" v-if="token.extension">
+                <img class="card-img-top" :src="token.extension.image" v-if="token.extension.image">
+                <div class="card-body">
+                  <h5 class="card-title" v-if="token.extension.name">{{token.extension.name}}</h5>
+                  <p class="card-text" v-if="token.extension.description">{{token.extension.description}}</p>
+                  <div class="id" v-if="token.id">
+                    <p><strong>Token ID:</strong> {{token.id}}</p>
+                  </div>
+                  <div class="owner" v-if="token.owner">
+                    <p>
+                      <strong>Owned by:</strong>&nbsp;
+                      <span v-if="token.owner !== accounts[0].address">{{token.owner}}</span>
+                      <span v-if="token.owner == accounts[0].address">You</span>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -127,7 +129,6 @@
           </div>
 
           <div class="controls minting-controls">
-            <!-- //here -->
             <button class="btn btn-primary" @click="ipfsUpload();" :disabled="!files.length || !metadata.description || !metadata.name || isMinting">Mint NFT</button>
           </div>
 
@@ -142,10 +143,10 @@
       <div v-if="nfts.market.tokens.length">
         <div class="card-deck">
           <div class="card" v-for="(token,i) in myNfts" :key="i">
-            <img class="card-img-top" :src="token.image" v-if="token.image">
+            <img class="card-img-top" :src="token.extension.image" v-if="token.extension.image">
             <div class="card-body">
-              <h5 class="card-title" v-if="token.name">{{token.name}}</h5>
-              <p class="card-text" v-if="token.description">{{token.description}}</p>
+              <h5 class="card-title" v-if="token.extension.name">{{token.extension.name}}</h5>
+              <p class="card-text" v-if="token.extension.description">{{token.extension.description}}</p>
               <div class="id" v-if="token.id">
                 <p><strong>Token ID:</strong> {{token.id}}</p>
               </div>
@@ -262,7 +263,7 @@ export default {
       market: null,
       metadata: {}
     },
-    metadata: {//here
+    metadata: {
       name: null,
       description: null,
       image: null
@@ -388,7 +389,7 @@ export default {
       this.$refs.file.files = event.dataTransfer.files;
       this.onChange();
     },
-    ipfsUpload: async function () {//here
+    ipfsUpload: async function () {
       if (!this.files.length) {
         console.warn('Nothing to upload to IPFS');
         return;
@@ -455,12 +456,9 @@ export default {
         return;
       };
     },
-    loadNfts: async function () { // XXX TODO: Fix request tokens of address
+    loadNfts: async function () {
       // Load NFTs
       try {
-        // User NFTs
-        // this.nfts.user = await this.getNftsOfOwner();
-        // console.log('My NFTs', this.nfts.user);
         // All NFTs (of contract)
         this.nfts.market = await this.getNfts();
         console.log('All NFTs', this.nfts.market);
@@ -515,18 +513,9 @@ export default {
 
       let query = await this.handlers.query(this.contract, entrypoint);
 
-      // Resolve IPFS metadata
-      const httpClient = axios.create();
-      let ipfsEndpoint = query['token_uri'];
-      let httpEndpoint = ipfsEndpoint.replace('ipfs://', this.ipfs.ipfsGateway);
-      let result = await httpClient.get(httpEndpoint);
-      
-      // DEBUG (axios res.):
-      // console.log('Axios res.', result);
-
-      if (result.data) {
-        if (result.data.image) {
-          result.data.image = result.data.image.replace('ipfs://', this.ipfs.ipfsGateway);
+      if (query.extension) {
+        if (query.extension.image) {
+          query.extension.image = query.extension.image.replace('ipfs://', this.ipfs.ipfsGateway);
         }
       }
 
@@ -535,21 +524,22 @@ export default {
           token_id: tokenId
         }
       }
-
       let ownerQuery = await this.handlers.query(this.contract, entrypoint);
       if (ownerQuery['owner']) {
-        result.data.owner = ownerQuery.owner;
+        query.owner = ownerQuery.owner;
       }
       if (ownerQuery['approvals']) {
-        result.data.approvals = ownerQuery.approvals;
+        query.approvals = ownerQuery.approvals;
       }
       
-      console.log('NFT contract succesfully  queried for token ID ' + tokenId, [query, ownerQuery]);
+      console.log('NFT contract succesfully queried for token ID ' + tokenId, query);
 
-      // Graceful exit
-      this.loading.status = false;
-      this.loading.msg = "";
-      return (result.data) ? result.data : query;
+      this.loading = {
+        status: false,
+        msg: ""
+      }
+
+      return query;
     },
     /**
      * Load NFTs of entire marketplace
@@ -595,7 +585,7 @@ export default {
         mint: {
           token_id: String(this.nfts.market.tokens.length),
           owner: this.accounts[0].address,
-          extension: this.metadata,//here
+          extension: this.metadata,
         }
       };
 
