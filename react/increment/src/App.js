@@ -5,7 +5,6 @@ import './App.css';
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
-
 const RPC = ConstantineInfo.rpc;
 const ContractAddress = process.env.REACT_APP_CONTRACT_ADDRESS;
 
@@ -42,7 +41,7 @@ export default class App extends Component {
           if (window['keplr']) {
             if (window.keplr['experimentalSuggestChain']) {
               await window.keplr.experimentalSuggestChain(this.state.chainMeta)
-              await window.keplr.enable(this.state.chainMeta.chainId);              
+              await window.keplr.enable(this.state.chainMeta.chainId);
               let offlineSigner = await window.getOfflineSigner(this.state.chainMeta.chainId);
               console.log('offlineSigner', offlineSigner);
               let cwClient = await SigningCosmWasmClient.connectWithSigner(this.state.rpc, offlineSigner);
@@ -147,7 +146,7 @@ export default class App extends Component {
       status: true,
       msg: "Incrementing counter..."
     };
-    this.setState({ 
+    this.setState({
       loadingStatus: loading.status,
       loadingMsg: loading.msg
     });
@@ -157,9 +156,9 @@ export default class App extends Component {
     };
     let txFee = calculateFee(300000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
     console.log('Tx args', {
-      senderAddress: this.state.userAddress, 
-      contractAddress: this.state.contract, 
-      msg: entrypoint, 
+      senderAddress: this.state.userAddress,
+      contractAddress: this.state.contract,
+      msg: entrypoint,
       fee: txFee
     });
     // Send Tx
