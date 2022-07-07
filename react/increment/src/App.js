@@ -2,11 +2,10 @@ import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
 
-import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
-import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
+import {CreateArchwaySigningClient, getAccount, CalculateFee} from "arch3.js"
 const RPC = ConstantineInfo.rpc;
-const ContractAddress = process.env.REACT_APP_CONTRACT_ADDRESS;
+const ContractAddress = "archway17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgssf05p7";
 
 export default class App extends Component {
   constructor(props) {
@@ -14,16 +13,16 @@ export default class App extends Component {
     this.state = {
       contract: ContractAddress,
       counter: null,
-      cwClient: null,
+      client: null,
       offlineSigner: null,
       chainMeta: ConstantineInfo,
       gasPrice: null,
       queryHandler: null,
+      executeHandler: null,
       loadingStatus: false,
       loadingMsg: "",
       logs: [],
       rpc: RPC,
-      accounts: null,
       userAddress: null
     };
   };
@@ -44,27 +43,24 @@ export default class App extends Component {
               await window.keplr.enable(this.state.chainMeta.chainId);
               let offlineSigner = await window.getOfflineSigner(this.state.chainMeta.chainId);
               console.log('offlineSigner', offlineSigner);
-              let cwClient = await SigningCosmWasmClient.connectWithSigner(this.state.rpc, offlineSigner);
-              let accounts = await offlineSigner.getAccounts();
-              let queryHandler = cwClient.queryClient.wasm.queryContractSmart;
-              let gasPrice = GasPrice.fromString('0.002uconst');
-              let userAddress = accounts[0].address;
+              let archway_client = await CreateArchwaySigningClient(offlineSigner);
+              let userAddress = await getAccount(offlineSigner);
+              let queryHandler = archway_client.client.queryContractSmart;
+              let executeHandler = archway_client.executeContract;
 
               // Update state
               this.setState({
-                accounts: accounts,
                 userAddress: userAddress,
-                cwClient: cwClient,
+                client: archway_client,
                 queryHandler: queryHandler,
-                gasPrice: gasPrice,
+                executeHandler: executeHandler,
                 offlineSigner: offlineSigner
               });
 
               // Debug
               console.log('dApp Connected', {
-                accounts: this.state.accounts,
                 userAddress: this.state.userAddress,
-                client: this.state.cwClient,
+                client: this.state.client,
                 queryHandler: this.state.queryHandler,
                 gasPrice: this.state.gasPrice,
                 offlineSigner: this.state.offlineSigner
@@ -114,7 +110,7 @@ export default class App extends Component {
     let entrypoint = {
       get_count: {}
     };
-    let query = await this.state.queryHandler(this.state.contract, entrypoint);
+    let query = await this.state.client.client.queryContractSmart(ContractAddress,entrypoint)
     loading = {
       status: false,
       msg: ""
@@ -133,14 +129,7 @@ export default class App extends Component {
    * @see https://github.com/drewstaylor/archway-template/blob/main/src/contract.rs#L42
    */
   incrementCounter = async () => {
-    // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
-    if (!this.state.accounts) {
-      console.warn('Error getting accounts', this.state.accounts);
-      return;
-    } else if (!this.state.userAddress) {
-      console.warn('Error getting user address', this.state.userAddress);
-      return;
-    }
+
     let loading;
     loading = {
       status: true,
@@ -154,7 +143,7 @@ export default class App extends Component {
     let entrypoint = {
       increment: {}
     };
-    let txFee = calculateFee(300000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
+    let txFee = CalculateFee(300000); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
     console.log('Tx args', {
       senderAddress: this.state.userAddress,
       contractAddress: this.state.contract,
@@ -163,7 +152,7 @@ export default class App extends Component {
     });
     // Send Tx
     try {
-      let tx = await this.state.cwClient.execute(this.state.userAddress, this.state.contract, entrypoint, txFee);
+      let tx = await this.state.executeHandler(this.state.contract,{increment:{}}, txFee)
       console.log('Increment Tx', tx);
       // Update Logs
       if (tx.logs) {
@@ -214,10 +203,8 @@ export default class App extends Component {
    */
   resetCounter = async () => {
     // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
-    if (!this.state.accounts) {
-      console.warn('Error getting user account', this.state.accounts);
-      return;
-    } else if (!this.state.userAddress) {
+
+    if (!this.state.userAddress) {
       console.warn('Error getting user address', this.state.userAddress);
       return;
     }
@@ -236,7 +223,7 @@ export default class App extends Component {
         count: 0
       }
     };
-    let txFee = calculateFee(300000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
+    let txFee = CalculateFee(300000); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
     // Send Tx
     try {
       let tx = await this.state.cwClient.execute(this.state.userAddress, this.state.contract, entrypoint, txFee);
