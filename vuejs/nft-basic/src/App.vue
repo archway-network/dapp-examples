@@ -418,29 +418,6 @@ export default {
           let uploadResult = await this.ipfs.upload(this.image);
           console.log('Successfully uploaded art', [uploadResult, String(uploadResult.cid)]);
           this.metadata.image = IPFS_PREFIX + String(uploadResult.cid); + IPFS_SUFFIX;
-          
-          // // Metadata upload (json)
-          // this.loading = {
-          //   status: true,
-          //   msg: "Uploading metadata to IPFS..."
-          // };
-          // this.metadata.ipfsMetadata.date = new Date().getTime();
-          // this.metadata.ipfsMetadata.image = IPFS_PREFIX + String(uploadResult.cid); + IPFS_SUFFIX;
-          
-          // let json = JSON.stringify(this.metadata.ipfsMetadata);
-          // const blob = new Blob([json], {type:"application/json"});
-          // const jsonReader = new FileReader();
-          // jsonReader.readAsDataURL(blob);
-
-          // jsonReader.onload = async (event) => {
-          //   let jsonUploadTarget = event.target.result;
-          //   let metadataUploadResult = await this.ipfs.upload(jsonUploadTarget);
-          //   console.log('Successfully uploaded JSON metadata to IPFS', [metadataUploadResult, String(metadataUploadResult.cid)]);
-          //   this.metadata.uri = IPFS_PREFIX + String(metadataUploadResult.cid) + IPFS_SUFFIX;
-            
-          //   // Mint NFT
-          //   await this.mintNft();
-          // }
           await this.mintNft();
         } catch (e) {
           console.error('Error uploading file to IPFS: ', e);
