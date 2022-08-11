@@ -1,6 +1,6 @@
 <template>
   <img alt="logo" src="./assets/logo.svg">
-  
+
   <!-- Not Connected -->
   <div class="content" v-if="!accounts">
     <!-- Controls -->
@@ -43,12 +43,12 @@
 </template>
 
 <script>
-import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
+import {SigningArchwayClient} from "@archwayhq/arch3-core";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
 
 const RPC = ConstantineInfo.rpc;
-const ContractAddress = process.env.VUE_APP_CONTRACT_ADDRESS;
+const ContractAddress = "archway1zvhyd8wqlwpvl6pn8fdlkc9vmsvhmlnls3edrcvlxp5gykgm54tsva96hs";
 
 export default {
   name: "App",
@@ -83,7 +83,7 @@ export default {
               await window.keplr.experimentalSuggestChain(this.chainMeta)
               await window.keplr.enable(this.chainMeta.chainId);
               this.offlineSigner = await window.getOfflineSigner(this.chainMeta.chainId);
-              this.cwClient = await SigningCosmWasmClient.connectWithSigner(this.rpc, this.offlineSigner);
+              this.cwClient = await SigningArchwayClient.connectWithSigner(this.rpc, this.offlineSigner);
               this.accounts = await this.offlineSigner.getAccounts();
 
               console.log('Wallet connected', {
@@ -142,7 +142,7 @@ export default {
         status: true,
         msg: "Refreshing counter..."
       };
-      let query = await this.handlers.query(this.contract, entrypoint);
+      let query = await this.cwClient.queryContractSmart(this.contract, entrypoint);
       console.log('Counter Queried', query);
       this.loading.status = false;
       this.loading.msg = "";
@@ -172,9 +172,9 @@ export default {
       };
       let txFee = calculateFee(300000, this.gas.price); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
       console.log('Tx args', {
-        senderAddress: this.accounts[0].address, 
-        contractAddress: this.contract, 
-        msg: entrypoint, 
+        senderAddress: this.accounts[0].address,
+        contractAddress: this.contract,
+        msg: entrypoint,
         fee: txFee
       });
       try {
