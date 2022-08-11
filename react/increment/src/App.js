@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
 
-import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
+import { SigningArchwayClient } from "@archwayhq/arch3-core";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
 
@@ -42,12 +42,12 @@ export default class App extends Component {
           if (window['keplr']) {
             if (window.keplr['experimentalSuggestChain']) {
               await window.keplr.experimentalSuggestChain(this.state.chainMeta)
-              await window.keplr.enable(this.state.chainMeta.chainId);              
+              await window.keplr.enable(this.state.chainMeta.chainId);
               let offlineSigner = await window.getOfflineSigner(this.state.chainMeta.chainId);
               console.log('offlineSigner', offlineSigner);
-              let cwClient = await SigningCosmWasmClient.connectWithSigner(this.state.rpc, offlineSigner);
+              let cwClient = await SigningArchwayClient.connectWithSigner(this.state.rpc, offlineSigner);
               let accounts = await offlineSigner.getAccounts();
-              let queryHandler = cwClient.queryClient.wasm.queryContractSmart;
+              let queryHandler = cwClient.queryContractSmart;
               let gasPrice = GasPrice.fromString('0.002uconst');
               let userAddress = accounts[0].address;
 
@@ -98,7 +98,7 @@ export default class App extends Component {
 
   /**
    * Query contract counter
-   * @see {SigningCosmWasmClient}
+   * @see {SigningArchwayClient}
    * @see https://github.com/drewstaylor/archway-template/blob/main/src/contract.rs#L66-L71
    */
   getCount = async () => {
@@ -115,7 +115,7 @@ export default class App extends Component {
     let entrypoint = {
       get_count: {}
     };
-    let query = await this.state.queryHandler(this.state.contract, entrypoint);
+    let query = await this.state.cwClient.queryContractSmart(ContractAddress,entrypoint);
     loading = {
       status: false,
       msg: ""
@@ -130,7 +130,7 @@ export default class App extends Component {
 
   /**
    * Increment the counter
-   * @see {SigningCosmWasmClient}
+   * @see {SigningArchwayClient}
    * @see https://github.com/drewstaylor/archway-template/blob/main/src/contract.rs#L42
    */
   incrementCounter = async () => {
@@ -147,7 +147,7 @@ export default class App extends Component {
       status: true,
       msg: "Incrementing counter..."
     };
-    this.setState({ 
+    this.setState({
       loadingStatus: loading.status,
       loadingMsg: loading.msg
     });
@@ -157,9 +157,9 @@ export default class App extends Component {
     };
     let txFee = calculateFee(300000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
     console.log('Tx args', {
-      senderAddress: this.state.userAddress, 
-      contractAddress: this.state.contract, 
-      msg: entrypoint, 
+      senderAddress: this.state.userAddress,
+      contractAddress: this.state.contract,
+      msg: entrypoint,
       fee: txFee
     });
     // Send Tx
@@ -210,7 +210,7 @@ export default class App extends Component {
 
   /**
    * Reset counter to 0
-   * @see {SigningCosmWasmClient}
+   * @see {SigningArchwayClient}
    * @see https://github.com/drewstaylor/archway-template/blob/main/src/contract.rs#L43
    */
   resetCounter = async () => {
