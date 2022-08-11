@@ -7,7 +7,7 @@ import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
 
 const RPC = ConstantineInfo.rpc;
-const ContractAddress = process.env.REACT_APP_CONTRACT_ADDRESS;
+const ContractAddress = "archway1zvhyd8wqlwpvl6pn8fdlkc9vmsvhmlnls3edrcvlxp5gykgm54tsva96hs";
 
 export default class App extends Component {
   constructor(props) {
