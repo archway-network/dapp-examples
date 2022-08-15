@@ -9,6 +9,7 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@archwayhq/arch3-core": "file:package.tgz",
     "@cosmjs/cosmwasm-stargate": "^0.26.4",
     "@cosmjs/stargate": "^0.26.4",
     "axios": "^0.26.0",
