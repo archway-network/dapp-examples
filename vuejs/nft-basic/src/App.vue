@@ -214,7 +214,7 @@ import axios from 'axios';
 import ipfsClient from './ipfs';
 
 const RPC = ConstantineInfo.rpc;
-const ContractAddress = "archway18rle2lv6vsjch508t23y6rpvj7q8fglnna7xeutzc2ekuwwdz9hq3g2kdu";
+const ContractAddress = process.env.CONTRACTADDRESS;
 
 
 
