@@ -211,7 +211,6 @@ import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
 import axios from 'axios';
-import ipfsClient from './ipfs';
 
 const RPC = ConstantineInfo.rpc;
 const ContractAddress = process.env.CONTRACTADDRESS;
@@ -250,7 +249,6 @@ export default {
     logs: [],
     showLogs: true,
     rpc: RPC,
-    ipfs: ipfsClient.IPFS,
     accounts: null,
     states: POSSIBLE_STATES,
     currentState: MARKET,
@@ -446,11 +444,6 @@ export default {
 
       let query = await this.handlers.query(this.contract, entrypoint);
 
-      if (query.extension) {
-        if (query.extension.image) {
-          query.extension.image = query.extension.image.replace('ipfs://', this.ipfs.ipfsGateway);
-        }
-      }
 
       entrypoint = {
         owner_of: {
