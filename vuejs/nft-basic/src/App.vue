@@ -207,7 +207,7 @@
 </template>
 
 <script>
-import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
+import { SigningArchwayClient } from "@archwayhq/arch3-core";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
 import axios from 'axios';
@@ -283,7 +283,7 @@ export default {
               await window.keplr.experimentalSuggestChain(this.chainMeta)
               await window.keplr.enable(this.chainMeta.chainId);
               this.offlineSigner = await window.getOfflineSigner(this.chainMeta.chainId);
-              this.wasmClient = await SigningCosmWasmClient.connectWithSigner(this.rpc, this.offlineSigner);
+              this.wasmClient = await SigningArchwayClient.connectWithSigner(this.rpc, this.offlineSigner);
               this.accounts = await this.offlineSigner.getAccounts();
 
               console.log('Wallet connected', {
@@ -469,7 +469,7 @@ export default {
     },
     /**
      * Load NFTs of entire marketplace
-     * @see {SigningCosmWasmClient}
+     * @see {SigningArchwayClient}
      * @see https://github.com/archway-network/archway-templates/blob/feature/cosmwasm-sdt-1.0.0-beta5/cw721/off-chain-metadata/src/query.rs#L107-L124
      */
     getNfts: async function () {
@@ -488,11 +488,11 @@ export default {
     },
     /**
      * Mint an NFT
-     * @see {SigningCosmWasmClient}
+     * @see {SigningArchwayClient}
      * @see https://github.com/drewstaylor/archway-template/blob/main/src/contract.rs#L42
      */
     mintNft: async function () {
-      // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
+      // SigningArchwayClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
       if (!this.accounts) {
         console.warn('Error getting user', this.accounts);
         return;
@@ -614,13 +614,13 @@ export default {
     },
     /**
      * Transfer an NFT to another user
-     * @see {SigningCosmWasmClient}
+     * @see {SigningArchwayClient}
      * @param {String} recipient : A recipient contract or wallet address
      * @param {String} tokenId : ID of the token to transferred to `recipient`
      * @see https://github.com/archway-network/archway-templates/blob/feature/cosmwasm-sdt-1.0.0-beta5/cw721/off-chain-metadata/src/msg.rs#L62-L74
      */
     transferNft: async function (recipient = null, tokenId = null) {
-      // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
+      // SigningArchwayClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
       if (!this.accounts) {
         console.warn('Error getting user', this.accounts);
         return;
