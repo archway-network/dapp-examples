@@ -17,7 +17,7 @@
   </nav>
 
   <img alt="logo" src="./assets/logo.svg">
-  
+
   <!-- Not Connected -->
   <div class="content" v-if="!accounts">
     <!-- Controls -->
@@ -53,7 +53,7 @@
       <h3>Market</h3>
 
       <div class="market-items" v-if="nfts.market">
-      
+
         <div v-if="!nfts.market.tokens.length">
           <p>There are no NFTs in this collection, try <a class="mint-now" @click="changeDisplayState(1)">minting</a> one</p>
         </div>
@@ -98,20 +98,20 @@
           <label for="nft_descr"><strong>Description:</strong></label>
           <textarea v-model="metadata.description" name="nft_descr" class="form-control"></textarea>
         </div>
-        
+
         <div class="image">
           <p class="art">
             <label><strong>Art:</strong></label><br/>
             <span style="font-style:italic;">*accepted file types: png, gif, jpeg</span>
           </p>
           <div class="dropzone" :class="{ok: files.length, waiting: !files.length}" @dragover="dragover" @dragleave="dragleave" @drop="drop">
-            <input 
-              type="file" 
-              name="fields[assetsFieldHandle][]" 
-              id="assetsFieldHandle" 
-              class="hidden" 
-              @change="onChange" 
-              ref="file" 
+            <input
+              type="file"
+              name="fields[assetsFieldHandle][]"
+              id="assetsFieldHandle"
+              class="hidden"
+              @change="onChange"
+              ref="file"
               accept="image/png, image/gif, image/jpeg"
             />
             <label for="assetsFieldHandle" class="block cursor-pointer">
@@ -119,7 +119,7 @@
                 <p class="instr-t">Drag and drop NFT art here</p>
               </div>
             </label>
-            
+
             <ul class="files-list-ul" v-cloak>
               <li class="text-sm p-1" v-for="(file,i) in files" :key="i">
                 <p>{{file.name }}</p>
@@ -129,13 +129,13 @@
           </div>
 
           <div class="controls minting-controls">
-            <button class="btn btn-primary" @click="ipfsUpload();" :disabled="!files.length || !metadata.description || !metadata.name || isMinting">Mint NFT</button>
+            <button class="btn btn-primary" @click="mintNft();" :disabled="!files.length || !metadata.description || !metadata.name || isMinting">Mint NFT</button>
           </div>
 
         </div>
       </div>
     </div>
-    
+
     <!-- STATES: My NFTs -->
     <div class="nfts mine" v-if="currentState == VIEW_OWNER && !selectedOwner">
       <h3>My NFTs</h3>
@@ -179,7 +179,7 @@
     <div class="nfts address" v-if="currentState == VIEW_OWNER && selectedOwner">
       <h3>{{selectedOwner}}'s NFTs</h3>
     </div>
-    
+
     <!-- Loading -->
     <div class="loading" v-if="loading.status">
       <p v-if="loading.msg">{{loading.msg}}</p>
@@ -211,13 +211,11 @@ import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
 import axios from 'axios';
-import ipfsClient from './ipfs';
 
 const RPC = ConstantineInfo.rpc;
-const ContractAddress = process.env.VUE_APP_CONTRACT_ADDRESS;
+const ContractAddress = process.env.CONTRACTADDRESS;
 
-const IPFS_PREFIX = 'ipfs://';
-const IPFS_SUFFIX = '/';
+
 
 const POSSIBLE_STATES = ['market','mint','token','owner'];
 const MARKET = 0;
@@ -251,7 +249,6 @@ export default {
     logs: [],
     showLogs: true,
     rpc: RPC,
-    ipfs: ipfsClient.IPFS,
     accounts: null,
     states: POSSIBLE_STATES,
     currentState: MARKET,
@@ -356,7 +353,7 @@ export default {
           break;
         }
       }
-      
+
     },
     resetMetadataForm: function () {
       this.metadata = {
@@ -389,73 +386,7 @@ export default {
       this.$refs.file.files = event.dataTransfer.files;
       this.onChange();
     },
-    ipfsUpload: async function () {
-      if (!this.files.length) {
-        console.warn('Nothing to upload to IPFS');
-        return;
-      }
 
-      this.loading = {
-        status: true,
-        msg: "Uploading art to IPFS..."
-      };
-
-      this.isMinting = true;
-
-      // Art upload
-      const reader = new FileReader(); 
-      let file = this.files[0];
-      reader.readAsDataURL(file);
-
-      reader.onload = async (event) => {
-        this.image = event.target.result;
-        // console.log('reader.onload', {
-        //   reader: reader,
-        //   result: reader.result,
-        //   image: this.image
-        // });
-        try {
-          let uploadResult = await this.ipfs.upload(this.image);
-          console.log('Successfully uploaded art', [uploadResult, String(uploadResult.cid)]);
-          this.metadata.image = IPFS_PREFIX + String(uploadResult.cid); + IPFS_SUFFIX;
-          
-          // // Metadata upload (json)
-          // this.loading = {
-          //   status: true,
-          //   msg: "Uploading metadata to IPFS..."
-          // };
-          // this.metadata.ipfsMetadata.date = new Date().getTime();
-          // this.metadata.ipfsMetadata.image = IPFS_PREFIX + String(uploadResult.cid); + IPFS_SUFFIX;
-          
-          // let json = JSON.stringify(this.metadata.ipfsMetadata);
-          // const blob = new Blob([json], {type:"application/json"});
-          // const jsonReader = new FileReader();
-          // jsonReader.readAsDataURL(blob);
-
-          // jsonReader.onload = async (event) => {
-          //   let jsonUploadTarget = event.target.result;
-          //   let metadataUploadResult = await this.ipfs.upload(jsonUploadTarget);
-          //   console.log('Successfully uploaded JSON metadata to IPFS', [metadataUploadResult, String(metadataUploadResult.cid)]);
-          //   this.metadata.uri = IPFS_PREFIX + String(metadataUploadResult.cid) + IPFS_SUFFIX;
-            
-          //   // Mint NFT
-          //   await this.mintNft();
-          // }
-          await this.mintNft();
-        } catch (e) {
-          console.error('Error uploading file to IPFS: ', e);
-          this.loading.status = false;
-          this.loading.msg = "";
-          return;
-        }
-      };
-      reader.onerror = (e) => {
-        console.error('Error uploading file to IPFS: ', e);
-        this.loading.status = false;
-        this.loading.msg = "";
-        return;
-      };
-    },
     loadNfts: async function () {
       // Load NFTs
       try {
@@ -467,10 +398,10 @@ export default {
         // Iterate ID's and get token data
         await this.loadNftData();
       } catch (e) {
-        console.error('Error loading NFTs', { 
-          nfts: this.nfts, 
+        console.error('Error loading NFTs', {
+          nfts: this.nfts,
           user: this.accounts,
-          error: e 
+          error: e
         });
       }
     },
@@ -513,11 +444,6 @@ export default {
 
       let query = await this.handlers.query(this.contract, entrypoint);
 
-      if (query.extension) {
-        if (query.extension.image) {
-          query.extension.image = query.extension.image.replace('ipfs://', this.ipfs.ipfsGateway);
-        }
-      }
 
       entrypoint = {
         owner_of: {
@@ -531,7 +457,7 @@ export default {
       if (ownerQuery['approvals']) {
         query.approvals = ownerQuery.approvals;
       }
-      
+
       console.log('NFT contract succesfully queried for token ID ' + tokenId, query);
 
       this.loading = {
@@ -597,9 +523,9 @@ export default {
       };
       let txFee = calculateFee(300000, this.gas.price); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
       console.log('Tx args', {
-        senderAddress: this.accounts[0].address, 
-        contractAddress: this.contract, 
-        msg: entrypoint, 
+        senderAddress: this.accounts[0].address,
+        contractAddress: this.contract,
+        msg: entrypoint,
         fee: txFee
       });
       try {
@@ -683,7 +609,7 @@ export default {
       if (!this.transferring.tokenId || !this.transferring.recipient || this.isSending) {
         console.warn('Nothing to transfer (check token ID and recipient address)', this.transferring);
         return;
-      } 
+      }
       await this.transferNft(this.transferring.recipient, this.transferring.tokenId);
     },
     /**
@@ -872,7 +798,7 @@ div.minting-form div {
   margin: 15px !important;
 }
 .card-img-top {
-  cursor: -moz-zoom-in; 
+  cursor: -moz-zoom-in;
   cursor: -webkit-zoom-in;
   cursor: zoom-in;
 }
