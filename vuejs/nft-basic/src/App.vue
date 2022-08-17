@@ -129,7 +129,7 @@
           </div>
 
           <div class="controls minting-controls">
-            <button class="btn btn-primary" @click="ipfsUpload();" :disabled="!files.length || !metadata.description || !metadata.name || isMinting">Mint NFT</button>
+            <button class="btn btn-primary" @click="mintNft();" :disabled="!files.length || !metadata.description || !metadata.name || isMinting">Mint NFT</button>
           </div>
 
         </div>
@@ -211,13 +211,11 @@ import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
 import axios from 'axios';
-import ipfsClient from './ipfs';
 
 const RPC = ConstantineInfo.rpc;
-const ContractAddress = "archway1u6clujjm2qnem09gd4y7hhmulftvlt6mej4q0dd742tzcnsstt2q70lpu6";
+const ContractAddress = process.env.CONTRACTADDRESS;
 
-const IPFS_PREFIX = 'ipfs://';
-const IPFS_SUFFIX = '/';
+
 
 const POSSIBLE_STATES = ['market','mint','token','owner'];
 const MARKET = 0;
@@ -251,7 +249,6 @@ export default {
     logs: [],
     showLogs: true,
     rpc: RPC,
-    ipfs: ipfsClient.IPFS,
     accounts: null,
     states: POSSIBLE_STATES,
     currentState: MARKET,
@@ -389,50 +386,7 @@ export default {
       this.$refs.file.files = event.dataTransfer.files;
       this.onChange();
     },
-    ipfsUpload: async function () {
-      if (!this.files.length) {
-        console.warn('Nothing to upload to IPFS');
-        return;
-      }
 
-      this.loading = {
-        status: true,
-        msg: "Uploading art to IPFS..."
-      };
-
-      this.isMinting = true;
-
-      // Art upload
-      const reader = new FileReader();
-      let file = this.files[0];
-      reader.readAsDataURL(file);
-
-      reader.onload = async (event) => {
-        this.image = event.target.result;
-        // console.log('reader.onload', {
-        //   reader: reader,
-        //   result: reader.result,
-        //   image: this.image
-        // });
-        try {
-          let uploadResult = await this.ipfs.upload(this.image);
-          console.log('Successfully uploaded art', [uploadResult, String(uploadResult.cid)]);
-          this.metadata.image = IPFS_PREFIX + String(uploadResult.cid); + IPFS_SUFFIX;
-          await this.mintNft();
-        } catch (e) {
-          console.error('Error uploading file to IPFS: ', e);
-          this.loading.status = false;
-          this.loading.msg = "";
-          return;
-        }
-      };
-      reader.onerror = (e) => {
-        console.error('Error uploading file to IPFS: ', e);
-        this.loading.status = false;
-        this.loading.msg = "";
-        return;
-      };
-    },
     loadNfts: async function () {
       // Load NFTs
       try {
@@ -490,11 +444,6 @@ export default {
 
       let query = await this.handlers.query(this.contract, entrypoint);
 
-      if (query.extension) {
-        if (query.extension.image) {
-          query.extension.image = query.extension.image.replace('ipfs://', this.ipfs.ipfsGateway);
-        }
-      }
 
       entrypoint = {
         owner_of: {
