@@ -8,12 +8,6 @@ const ipfsGateway = 'https://ipfs.io/ipfs/';
 
 const upload = async function (uploadPath) {
 
-  console.log("Infura?", {
-    INFURA_PROJECT: INFURA_PROJECT,
-    INFURA_API_SECRET: INFURA_API_SECRET,
-    AuthHeader: AuthHeader
-  });
-
   const ipfs = await create({
     host: 'ipfs.infura.io',
     port: 5001,
