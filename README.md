@@ -27,19 +27,12 @@ cp env.example .env
 vim .env
 cat .env
 # Example output:
-> VUE_APP_RPC_ADDRESS="https://rpc.constantine-1.archway.tech:443"
 > VUE_APP_CONTRACT_ADDRESS="archway1c6yawecywrgu9y5lc6y79mvxgk6lx0hhehn5kn"
-> VUE_APP_ACCOUNT_ADDRESS="archway14qemq0vw6y3gc3u3e0aty2e764u4gs5lndxgyk"
-> VUE_APP_ACCOUNT_MNEMONIC="mnemonic seed words go here"
 ```
-
-## Why are we importing a wallet mnemonic?
-
-Hang in there, we're working on browser extension options for connecting users to Archway dApps. We hope to have this option for you soon.
 
 ## Packages
 
-Working in concert, the following packages provide dApp frontends with Archway capabilities:
+Working together in concert, the following packages provide dApp frontends with Archway capabilities:
 
 - [@cosmjs/stargate](https://www.npmjs.com/package/@cosmjs/stargate)
 - [@cosmjs/cosmwasm-stargate](https://www.npmjs.com/package/@cosmjs/cosmwasm-stargate)
