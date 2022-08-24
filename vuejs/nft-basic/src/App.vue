@@ -233,7 +233,6 @@ export default {
     VIEW_TOKEN: VIEW_TOKEN,
     VIEW_OWNER: VIEW_OWNER,
     contract: ContractAddress,
-    counter: null,
     wasmClient: null,
     axios: axios,
     chainMeta: ConstantineInfo,
@@ -417,7 +416,7 @@ export default {
         try {
           let uploadResult = await this.ipfs.upload(this.image);
           console.log('Successfully uploaded art', [uploadResult, String(uploadResult.cid)]);
-          this.metadata.image = IPFS_PREFIX + String(uploadResult.cid); + IPFS_SUFFIX;
+          this.metadata.image = IPFS_PREFIX + String(uploadResult.cid) + IPFS_SUFFIX;
           await this.mintNft();
         } catch (e) {
           console.error('Error uploading file to IPFS: ', e);
