@@ -633,13 +633,13 @@ export default class App extends Component {
           <div className="collapse navbar-collapse" id="navbarSupportedContent">
             <ul className="navbar-nav mr-auto">
               <li className="nav-item">
-                <button className="btn" onClick={() => this.changeDisplayState(0)}>Market</button>
+                <button className={`btn ${viewState === MARKET ? "btn-primary" : "btn-inverse"}`} onClick={() => this.changeDisplayState(MARKET)}>Market</button>
               </li>
               <li className="nav-item">
-                <button className="btn" onClick={() => this.changeDisplayState(1)}>Mint</button>
+                <button className={`btn ${viewState === MINT ? "btn-primary" : "btn-inverse"}`} onClick={() => this.changeDisplayState(MINT)}>Mint</button>
               </li>
               <li className="nav-item">
-                <button className="btn" onClick={() => this.changeDisplayState(3)}>My NFTs</button>
+                <button className={`btn ${viewState === VIEW_OWNER ? "btn-primary" : "btn-inverse"}`} onClick={() => this.changeDisplayState(VIEW_OWNER)}>My NFTs</button>
               </li>
             </ul>
           </div>
@@ -706,7 +706,7 @@ function View(state, nfts, accounts) {
         let description = (token.extension.description) ? token.extension.description : null;
         let owner = (token.owner === accounts[0].address) ? "You" : token.owner;
         tokens.push(
-          <div className="card">
+          <div className="card" key={token.id}>
             <div className="wrapper">
               <img className="card-img-top" src={image} alt={description} />
               <div className="card-body">
