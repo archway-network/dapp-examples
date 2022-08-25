@@ -585,13 +585,6 @@ export default class App extends Component {
     const nfts = this.state.nfts;
     const accounts = this.state.accounts;
 
-    // const userNfts = (this.state.nfts['tokens'] && userAddress) ? this.state.nfts.tokens.filter((token) => {
-    //   if (token.owner) {
-    //     if (token.owner == userAddress)
-    //       return token;
-    //   }
-    // }) : null;
-
     // Maps
     let logMeta = [];
     for (let i = 0; i < this.state.logs.length; i++) {
@@ -694,7 +687,7 @@ function View(state, nfts, accounts) {
       if (!nfts['tokens']) {
         return(
           <div>
-            <p>There are no NFTs in this collection, try <button className="mint-now" onClick={this.changeDisplayState(1)}>minting</button> one</p>
+            <p>There are no NFTs in this collection</p>
           </div>
         )
       }
@@ -750,14 +743,84 @@ function View(state, nfts, accounts) {
         <div className="mint">Mint</div>
       );
     }
-    case VIEW_TOKEN: {
-      return(
-        <div className="view-token">View Token</div>
-      );
+    case VIEW_TOKEN: { // XXX: Currently not used
+      return;
     }
     case VIEW_OWNER: {
+
+      if (!nfts || !accounts) {
+        return;
+      }
+
+      if (!accounts[0]) {
+        return;
+      }
+
+      if (!nfts['tokens']) {
+        return(
+          <div>
+            <p>There are no NFTs in this collection</p>
+          </div>
+        )
+      }
+
+      const userNfts = nfts.tokens.filter((token) => {
+        if (token.owner) {
+          if (token.owner === accounts[0].address)
+            return token;
+          else
+            return false;
+        } else {
+          return false;
+        }
+      });
+
+      console.log("My NFTS", userNfts);
+
+      const tokens = [];
+      for (const token of userNfts) {
+        let image = (token.extension.image) ? token.extension.image : null;
+        let name = (token.extension.name) ? token.extension.name : null;
+        let description = (token.extension.description) ? token.extension.description : null;
+        let owner = (token.owner === accounts[0].address) ? "You" : token.owner;
+        tokens.push(
+          <div className="card" key={token.id}>
+            <div className="wrapper">
+              <img className="card-img-top" src={image} alt={description} />
+              <div className="card-body">
+                <h5 className="card-title">{name}</h5>
+                <p className="card-text">{description}</p>
+                <div className="id">
+                  <p><strong>Token ID:</strong> {token.id}</p>
+                </div>
+                <div className="owner">
+                  <p>
+                    <strong>Owned by:</strong>&nbsp;
+                    <span>{owner}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
       return(
-        <div className="nfts mine">My NFTs</div>
+        <div className="nfts mine">
+
+          <h3>My Nfts</h3>
+
+          <div className="my-items">
+
+            <div>
+              <div className="card-deck">
+                {tokens}
+              </div>
+            </div>
+
+          </div>
+
+        </div>
       );
     }
     default: {
