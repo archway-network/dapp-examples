@@ -6,6 +6,8 @@ import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
 
+import { IPFS } from './ipfs';
+
 const RPC = ConstantineInfo.rpc;
 const ContractAddress = process.env.REACT_APP_CONTRACT_ADDRESS;
 
@@ -17,8 +19,6 @@ const MARKET = 0;
 const MINT = 1;
 const VIEW_TOKEN = 2;
 const VIEW_OWNER = 3;
-
-import { IPFS } from './ipfs';
 
 export default class App extends Component {
   constructor(props) {
@@ -51,7 +51,8 @@ export default class App extends Component {
       VIEW_TOKEN: VIEW_TOKEN,
       VIEW_OWNER: VIEW_OWNER,
       states: POSSIBLE_STATES,
-      currentState: MARKET
+      currentState: MARKET,
+      selectedOwner: null
     };
   };
 
@@ -96,6 +97,9 @@ export default class App extends Component {
                 gasPrice: this.state.gasPrice,
                 offlineSigner: this.state.offlineSigner
               });
+
+              // Load NFTs
+              await this.loadNfts();
             } else {
               console.warn('Error access experimental features, please update Keplr');
             }
@@ -108,6 +112,41 @@ export default class App extends Component {
       } catch (e) {
         console.error('Error connecting to wallet', e);
       }
+  }
+
+  changeDisplayState = async (state = 0, account = null) => {
+    if (typeof state !== 'number') {
+      return;
+    } else if (state < 0 || state > (this.state.states.length - 1)) {
+      console.warn('An invalid state was selected. State must be an integer within range 0 and ' + (this.state.states.length - 1), state);
+      return;
+    }
+
+    this.setState({
+      selectedOwner: (account) ? account : null,
+      currentState: state
+    });
+
+    switch (state) {
+      case MARKET: {
+        this.loadNfts();
+        break;
+      }
+      case MINT: {
+        this.resetMetadataForm();
+        break;
+      }
+      case VIEW_TOKEN: {
+        break;
+      }
+      case VIEW_OWNER: {
+        console.log('Viewing NFTs of owner', account);
+        break;
+      }
+      default: {
+        break;
+      }
+    }
   }
 
 
@@ -186,6 +225,7 @@ export default class App extends Component {
   }
 
   resetMetadataForm = async () => {
+    console.log("TODO: reset metadata form");
     // ...
   }
 
@@ -214,7 +254,7 @@ export default class App extends Component {
               let balance = await this.cwClient.getBalance(this.state.accounts[i].address, this.state.chainMeta.currencies[0].coinMinimalDenom);
               
               let accounts = this.state.accounts;
-              accountBalances[i].balance = balance;
+              accounts[i].balance = balance;
 
               this.setState({
                 loadingStatus: false,
@@ -255,12 +295,9 @@ export default class App extends Component {
     try {
       // All NFTs (of contract)
       let nfts = await this.getNfts();
-      this.setState({
-        nftsMarket: nfts
-      });
-      console.log('All NFTs', this.state.nfts);
+      console.log('All NFTs', nfts);
       // Iterate ID's and get token data
-      await this.loadNftData();
+      await this.loadNftData(nfts);
     } catch (e) {
       console.error('Error loading NFTs', { 
         nfts: this.state.nfts, 
@@ -270,16 +307,15 @@ export default class App extends Component {
     }
   }
 
-  loadNftData = async () => {
-    if (!this.state.nfts) {
+  loadNftData = async (nfts = null) => {
+    if (!nfts) {
       console.warn('No NFTs; nothing to query', this.state.nfts);
       return;
-    } else if (!this.state.nfts.tokens) {
+    } else if (!nfts.tokens) {
       console.warn('No NFTs; nothing to query', this.state.nfts);
       return;
     }
 
-    let nfts = this.state.nfts;
     for (let i = 0; i < nfts.tokens.length; i++) {
       let id = nfts.tokens[i];
       console.log('Requesting data for token ' + id);
@@ -287,10 +323,11 @@ export default class App extends Component {
       let resolvedMetadata = data;
       resolvedMetadata.id = id;
       nfts.tokens[i] = resolvedMetadata;
-      if (i = (nfts.tokens.length - 1)) {
+      if (i === (nfts.tokens.length - 1)) {
         this.setState({
-          nftsMarket: nfts
-        })
+          nfts: nfts
+        });
+        console.log("Finished loading NFTs", this.state.nfts);
       }
     }
   }
@@ -316,7 +353,7 @@ export default class App extends Component {
 
     if (query.extension) {
       if (query.extension.image) {
-        query.extension.image = query.extension.image.replace('ipfs://', this.ipfs.ipfsGateway);
+        query.extension.image = query.extension.image.replace('ipfs://', IPFS.ipfsGateway);
       }
     }
 
@@ -544,13 +581,16 @@ export default class App extends Component {
     // State
     const loadingMsg = this.state.loadingMsg;
     const userAddress = this.state.userAddress;
+    const viewState = this.state.currentState;
+    const nfts = this.state.nfts;
+    const accounts = this.state.accounts;
 
-    const userNfts = (this.state.nfts['tokens'] && userAddress) ? this.state.nfts.tokens.filter((token) => {
-      if (token.owner) {
-        if (token.owner == userAddress)
-          return token;
-      }
-    }) : null;
+    // const userNfts = (this.state.nfts['tokens'] && userAddress) ? this.state.nfts.tokens.filter((token) => {
+    //   if (token.owner) {
+    //     if (token.owner == userAddress)
+    //       return token;
+    //   }
+    // }) : null;
 
     // Maps
     let logMeta = [];
@@ -588,20 +628,27 @@ export default class App extends Component {
     // Connected
     return (
       <div className="content">
+
+        <nav className="navbar navbar-expand-lg navbar-light bg-light">
+          <div className="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul className="navbar-nav mr-auto">
+              <li className="nav-item">
+                <button className="btn" onClick={() => this.changeDisplayState(0)}>Market</button>
+              </li>
+              <li className="nav-item">
+                <button className="btn" onClick={() => this.changeDisplayState(1)}>Mint</button>
+              </li>
+              <li className="nav-item">
+                <button className="btn" onClick={() => this.changeDisplayState(3)}>My NFTs</button>
+              </li>
+            </ul>
+          </div>
+        </nav>
+
         <img src={logo} alt="logo" />
 
-        {/* Counter Status Display */}
-        <div className="status-display">
-          <ul className="status">
-            {/* <li className="counter"><strong>Counter:</strong>&nbsp;{counter}</li> */}
-          </ul>
-        </div>
-
-        {/* Controls */}
-        <div className="button-controls">
-          {/* <button id="incrementer" className="btn btn-main" onClick={this.incrementCounter}>Increment Counter</button>
-          <button id="resetter" className="btn btn-alt" onClick={this.resetCounter}>Reset Counter</button> */}
-        </div>
+        {/* Current View */}
+        {View(viewState, nfts, accounts)}
 
         {/* Loading */}
         {Loading(loadingMsg)}
@@ -627,4 +674,94 @@ function Loading(msg) {
       <p>{msg}</p>
     </div>
   );
+}
+
+function View(state, nfts, accounts) {
+  if (typeof state !== 'number') {
+    return;
+  } else if (state < 0 || state > (POSSIBLE_STATES.length - 1)) {
+    console.warn('An invalid state was selected. State must be an integer within range 0 and ' + (this.state.states.length - 1), state);
+    return;
+  }
+
+  switch (state) {
+    case MARKET: {
+
+      if (!nfts) {
+        return;
+      }
+
+      if (!nfts['tokens']) {
+        return(
+          <div>
+            <p>There are no NFTs in this collection, try <button className="mint-now" onClick={this.changeDisplayState(1)}>minting</button> one</p>
+          </div>
+        )
+      }
+
+      const tokens = [];
+      for (const token of nfts.tokens) {
+        let image = (token.extension.image) ? token.extension.image : null;
+        let name = (token.extension.name) ? token.extension.name : null;
+        let description = (token.extension.description) ? token.extension.description : null;
+        let owner = (token.owner === accounts[0].address) ? "You" : token.owner;
+        tokens.push(
+          <div className="card">
+            <div className="wrapper">
+              <img className="card-img-top" src={image} alt={description} />
+              <div className="card-body">
+                <h5 className="card-title">{name}</h5>
+                <p className="card-text">{description}</p>
+                <div className="id">
+                  <p><strong>Token ID:</strong> {token.id}</p>
+                </div>
+                <div className="owner">
+                  <p>
+                    <strong>Owned by:</strong>&nbsp;
+                    <span>{owner}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      return(
+        <div className="market">
+
+          <h3>Market</h3>
+
+          <div className="market-items">
+
+            <div>
+              <div className="card-deck">
+                {tokens}
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      );
+    }
+    case MINT: {
+      return(
+        <div className="mint">Mint</div>
+      );
+    }
+    case VIEW_TOKEN: {
+      return(
+        <div className="view-token">View Token</div>
+      );
+    }
+    case VIEW_OWNER: {
+      return(
+        <div className="nfts mine">My NFTs</div>
+      );
+    }
+    default: {
+      return;
+    }
+  }
 }
