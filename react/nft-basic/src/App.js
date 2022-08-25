@@ -256,7 +256,7 @@ export default class App extends Component {
       // All NFTs (of contract)
       let nfts = await this.getNfts();
       this.setState({
-        nftsMarket: nfts;
+        nftsMarket: nfts
       });
       console.log('All NFTs', this.state.nfts);
       // Iterate ID's and get token data
@@ -423,14 +423,15 @@ export default class App extends Component {
         loadingMsg: "Minting nft...",
         minting: true
       });
+
       let tx = await this.state.cwClient.execute(this.state.accounts[0].address, this.state.contract, entrypoint, txFee);
-      
+      console.log('Mint Tx', tx);
+
       this.setState({
         loadingStatus: false,
         loadingMsg: "",
         minting: false
       });
-      console.log('Mint Tx', tx);
 
       // Reset minting form
       this.resetMetadataForm();
@@ -444,8 +445,8 @@ export default class App extends Component {
             logs: [JSON.stringify(tx.logs, null, 2), ...this.state.logs]
           });
         }
-      
-        // Refresh NFT collections (all NFTs and NFTs owned by end user)
+      }  
+      // Refresh NFT collections (all NFTs and NFTs owned by end user)
       await this.loadNfts();
       if (this.state.accounts.length) {
         await this.getBalances();
@@ -522,8 +523,9 @@ export default class App extends Component {
             logs: [JSON.stringify(tx.logs, null, 2), ...this.state.logs]
           });
         }
-      
-        // Refresh NFT collections (all NFTs and NFTs owned by end user)
+      }
+
+      // Refresh NFT collections (all NFTs and NFTs owned by end user)
       await this.loadNfts();
       if (this.state.accounts.length) {
         await this.getBalances();
