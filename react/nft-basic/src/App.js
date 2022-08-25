@@ -251,7 +251,7 @@ export default class App extends Component {
           if (this.accounts[i]['address']) {
             try {
               console.log('address', this.state.accounts[i].address);
-              let balance = await this.cwClient.getBalance(this.state.accounts[i].address, this.state.chainMeta.currencies[0].coinMinimalDenom);
+              let balance = await this.state.cwClient.getBalance(this.state.accounts[i].address, this.state.chainMeta.currencies[0].coinMinimalDenom);
               
               let accounts = this.state.accounts;
               accounts[i].balance = balance;
@@ -498,14 +498,6 @@ export default class App extends Component {
     }
   }
 
-  handleTransfer = async () => {
-    if (!this.state.transferTokenId || !this.state.transferRecipient || this.state.isSending) {
-      console.warn('Nothing to transfer (check token ID and recipient address)');
-      return;
-    } 
-    await this.transferNft(this.state.transferRecipient, this.transferTokenId);
-  }
-
   /**
    * Transfer an NFT to another user
    * @see {SigningCosmWasmClient}
@@ -542,7 +534,7 @@ export default class App extends Component {
     let txFee = calculateFee(300000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
     // Send Tx
     try {
-      let tx = await this.cwClient.execute(this.state.accounts[0].address, this.state.contract, entrypoint, txFee);
+      let tx = await this.state.cwClient.execute(this.state.accounts[0].address, this.state.contract, entrypoint, txFee);
       console.log('Transfer Tx', tx);
       
       this.setState({
@@ -568,11 +560,11 @@ export default class App extends Component {
         await this.getBalances();
       }
     } catch (e) {
-      console.warn('Error executing mint tx', e);
+      console.warn('Error executing transfer tx', e);
       this.setState({
+        isSending: false,
         loadingStatus: false,
-        loadingMsg: "",
-        minting: false
+        loadingMsg: ""
       });
     }
   }
@@ -584,6 +576,10 @@ export default class App extends Component {
     const viewState = this.state.currentState;
     const nfts = this.state.nfts;
     const accounts = this.state.accounts;
+
+
+    // Methods
+    const transferNft = this.transferNft;
 
     // Maps
     let logMeta = [];
@@ -598,7 +594,7 @@ export default class App extends Component {
     const logItems = (this.state.logs.length) ? this.state.logs.map((log,i) =>
       <div key={logMeta[i].timestamp}>
         <p className="label">
-          <strong><span>Counter {(logMeta[i].type === 'increment') ? 'Incremented' : 'Reset' }&nbsp;</span>({logMeta[i].timestamp}):</strong>
+          <strong><span>{logMeta[i].type}&nbsp;</span>({logMeta[i].timestamp}):</strong>
         </p>
         <pre className="log-entry" key={i}>{log}</pre>
       </div>
@@ -638,15 +634,23 @@ export default class App extends Component {
           </div>
         </nav>
 
+        <br />
+        <br />
         <img src={logo} alt="logo" />
 
         {/* Current View */}
-        {View(viewState, nfts, accounts)}
+        <br />
+        <br />
+        {View(viewState, nfts, accounts, transferNft)}
 
         {/* Loading */}
+        <br />
+        <br />
         {Loading(loadingMsg)}
 
         {/* Logs map */}
+        <br />
+        <br />
         <div className="logs">
           <div>{logItems}</div>
         </div>
@@ -669,7 +673,7 @@ function Loading(msg) {
   );
 }
 
-function View(state, nfts, accounts) {
+function View(state, nfts, accounts, transferNft) {
   if (typeof state !== 'number') {
     return;
   } else if (state < 0 || state > (POSSIBLE_STATES.length - 1)) {
@@ -685,6 +689,14 @@ function View(state, nfts, accounts) {
       }
 
       if (!nfts['tokens']) {
+        return(
+          <div>
+            <p>There are no NFTs in this collection</p>
+          </div>
+        )
+      }
+
+      if (!nfts['tokens'].length) {
         return(
           <div>
             <p>There are no NFTs in this collection</p>
@@ -764,6 +776,14 @@ function View(state, nfts, accounts) {
         )
       }
 
+      if (!nfts['tokens'].length) {
+        return(
+          <div>
+            <p>There are no NFTs in this collection</p>
+          </div>
+        )
+      }
+
       const userNfts = nfts.tokens.filter((token) => {
         if (token.owner) {
           if (token.owner === accounts[0].address)
@@ -775,7 +795,13 @@ function View(state, nfts, accounts) {
         }
       });
 
-      console.log("My NFTS", userNfts);
+      if (!userNfts.length) {
+        return(
+          <div>
+            <p>You don't own any NFTs from this collection</p>
+          </div>
+        )
+      }
 
       const tokens = [];
       for (const token of userNfts) {
@@ -798,6 +824,17 @@ function View(state, nfts, accounts) {
                     <strong>Owned by:</strong>&nbsp;
                     <span>{owner}</span>
                   </p>
+                </div>
+                {/* Transfer NFT */}
+                <br />
+                <br />
+                <div className="controls transfer-controls">
+                  <h5>Transfer token ownership:</h5>
+                  <div>
+                    <label className="recipient"><strong>Recipient:</strong></label>
+                    <input id={token.id + '_recipient'} className="form-control" type="text" placeholder="archway1f395p0gg67mmfd5zcqvpnp9cxnu0hg6r9hfczq" />
+                    <button className="btn btn-primary btn-send" onClick={() => transferNft(document.getElementById(token.id + '_recipient').value, token.id)}>Send</button>
+                  </div>
                 </div>
               </div>
             </div>
