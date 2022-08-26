@@ -175,24 +175,34 @@ export default class App extends Component {
   dragleave(event) {
     event.currentTarget.classList.remove('hovering');
   }
-  drop(event) {
+  drop(event, self) {
     event.preventDefault();
     event.currentTarget.classList.remove('waiting');
     event.currentTarget.classList.add('ok');
-    this.setState({
-      files: event.dataTransfer.files
+
+    self.setState({
+      files: Array.from(event.dataTransfer.files)
+    });
+
+    console.log('Dropped files', {
+      FileList: event.dataTransfer.files, 
+      Array: this.state.files
     });
   }
 
   // Form handlers
   handleName = (event) => {
+    let metadata = this.state.metadata;
+    metadata.name = event.target.value;
     this.setState({
-      name: event.target.value
+      metadata: metadata
     });
   }
   handleDescription = (event) => {
+    let metadata = this.state.metadata;
+    metadata.description = event.target.value;
     this.setState({
-      description: event.target.value
+      metadata: metadata
     });
   }
 
@@ -293,7 +303,7 @@ export default class App extends Component {
     if (this.state.accounts) {
       if (this.state.accounts.length) {
         for (let i = 0; i < this.state.accounts.length; i++) {
-          if (this.accounts[i]['address']) {
+          if (this.state.accounts[i]['address']) {
             try {
               console.log('address', this.state.accounts[i].address);
               let balance = await this.state.cwClient.getBalance(this.state.accounts[i].address, this.state.chainMeta.currencies[0].coinMinimalDenom);
@@ -465,31 +475,27 @@ export default class App extends Component {
     // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
     if (!this.state.accounts) {
       console.warn('Error getting user', this.state.accounts);
-      this.setState({
-        loadingStatus: false,
-        loadingMsg: "",
-        minting: false
-      });
       return;
     } else if (!this.state.accounts.length) {
       console.warn('Error getting user', this.state.accounts);
-      this.setState({
-        loadingStatus: false,
-        loadingMsg: "",
-        minting: false
-      });
       return;
     }
 
     // Refresh NFT market to get last minted ID
-    this.loadNfts();
+    await this.loadNfts();
+
+    this.setState({
+      loadingStatus: true,
+      loadingMsg: "Minting nft...",
+      minting: true
+    });
 
     // Prepare Tx
     let entrypoint = {
       mint: {
         token_id: String(this.state.nfts.tokens.length),
         owner: this.state.accounts[0].address,
-        extension: this.metadata,
+        extension: this.state.metadata
       }
     };
 
@@ -505,12 +511,6 @@ export default class App extends Component {
 
     try {
       // Send Tx
-      this.setState({
-        loadingStatus: true,
-        loadingMsg: "Minting nft...",
-        minting: true
-      });
-
       let tx = await this.state.cwClient.execute(this.state.accounts[0].address, this.state.contract, entrypoint, txFee);
       console.log('Mint Tx', tx);
 
@@ -741,7 +741,7 @@ export default class App extends Component {
                   className="dropzone waiting" 
                   onDragOver={this.dragover} 
                   onDragLeave={this.dragleave} 
-                  onDrop={this.drop}
+                  onDrop={(event) => this.drop(event, this)}
                 >
                   <input 
                     type="file" 
