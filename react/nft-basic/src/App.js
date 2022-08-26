@@ -34,12 +34,16 @@ export default class App extends Component {
       loadingStatus: false,
       loadingMsg: "",
       minting: false,
-      files: null,
+      files: [],
       image: null,
       ipfsImage: null,
       logs: [],
       nfts: null,
-      nftsMetadata: null,
+      metadata: {
+        name: "",
+        description: "",
+        image: null
+      },
       rpc: RPC,
       accounts: null,
       userAddress: null,
@@ -150,28 +154,47 @@ export default class App extends Component {
   }
 
 
-  // onChange: function () {
-  //   this.files = this.$refs.file.files;
-  //   console.log('(onChange) Files:', this.files);
-  // },
-  // clearFiles: function () {
-  //   this.files = [];
-  // },
-  // dragover(event) {
-  //   event.preventDefault();
-  //   if (!event.currentTarget.classList.contains('ok')) {
-  //     event.currentTarget.classList.add('hovering');
-  //   }
-  // },
-  // dragleave(event) {
-  //   event.currentTarget.classList.remove('hovering');
-  // },
-  // drop(event) {
-  //   event.preventDefault();
-  //   this.$refs.file.files = event.dataTransfer.files;
-  //   this.onChange();
-  // },
+  // File handlers
+  onChange = (event) => {
+    event.preventDefault();
+    this.setState({
+      files: event.dataTransfer.files
+    });
+  }
+  clearFiles = () => {
+    this.setState({
+      files: []
+    });
+  }
+  dragover = (event) => {
+    event.preventDefault();
+    if (!event.currentTarget.classList.contains('ok')) {
+      event.currentTarget.classList.add('hovering');
+    }
+  }
+  dragleave(event) {
+    event.currentTarget.classList.remove('hovering');
+  }
+  drop(event) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('waiting');
+    event.currentTarget.classList.add('ok');
+    this.setState({
+      files: event.dataTransfer.files
+    });
+  }
 
+  // Form handlers
+  handleName = (event) => {
+    this.setState({
+      name: event.target.value
+    });
+  }
+  handleDescription = (event) => {
+    this.setState({
+      description: event.target.value
+    });
+  }
 
   ipfsUpload = async () => {
     if (!this.state.files.length) {
@@ -198,9 +221,13 @@ export default class App extends Component {
       try {
         let uploadResult = await IPFS.upload(this.state.image);
         console.log('Successfully uploaded art', [uploadResult, String(uploadResult.cid)]);
+
+        let metadata = this.state.metadata;
+        metadata.image = IPFS_PREFIX + String(uploadResult.cid) + IPFS_SUFFIX;
         this.setState({
-          ipfsImage: IPFS_PREFIX + String(uploadResult.cid) + IPFS_SUFFIX
-        })
+          metadata: metadata,
+          ipfsImage: metadata.image
+        });
 
         await this.mintNft();
       } catch (e) {
@@ -225,8 +252,26 @@ export default class App extends Component {
   }
 
   resetMetadataForm = async () => {
-    console.log("TODO: reset metadata form");
-    // ...
+    let metadata = {
+      name: "", 
+      description: "",
+      image: null
+    }
+    this.setState({
+      metadata: metadata,
+      image: null,
+      ipfsImage: null
+    });
+
+    try {
+      const dropzone = document.getElementById('dropzone');
+      if (dropzone) {
+        dropzone.classList.remove('ok');
+        dropzone.classList.add('waiting');
+      }
+    } catch(e) {
+      console.warn("Dropzone classes were not correctly cleaned up", e);
+    }
   }
 
   getBalances = async () => {
@@ -412,6 +457,11 @@ export default class App extends Component {
    * @see https://github.com/drewstaylor/archway-template/blob/main/src/contract.rs#L42
    */
   mintNft = async () => {
+    if (!this.state.metadata.name || !this.state.metadata.description) {
+      console.warn('Error resolving NFT name or description metadata', this.state.metadata);
+      return;
+    }
+
     // SigningCosmWasmClient.execute: async (senderAddress, contractAddress, msg, fee, memo = "", funds)
     if (!this.state.accounts) {
       console.warn('Error getting user', this.state.accounts);
@@ -600,6 +650,18 @@ export default class App extends Component {
       </div>
     ) : null;
 
+    const files = (this.state.files.length) ? this.state.files.map((file,i) =>
+      <li className="text-sm p-1" key={'file-' + i}>
+        <p>{file.name}</p>
+        <button 
+          className="btn btn-danger btn-reset" 
+          type="button" 
+          onClick={this.clearFiles} 
+          title="Remove file"
+        >Reset</button>
+      </li>
+    ) : null;
+
     // Not Connected
     if (!userAddress) {
       return (
@@ -610,6 +672,120 @@ export default class App extends Component {
             <button id="connect" className="btn btn-main" onClick={this.connectWallet}>Connect Wallet</button>
           </div>
 
+        </div>
+      );
+    } else if (viewState === MINT) {
+      return(
+        <div className="content">
+
+          <nav className="navbar navbar-expand-lg navbar-light bg-light">
+          <div className="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul className="navbar-nav mr-auto">
+              <li className="nav-item">
+                <button className={`btn ${viewState === MARKET ? "btn-primary" : "btn-inverse"}`} onClick={() => this.changeDisplayState(MARKET)}>Market</button>
+              </li>
+              <li className="nav-item">
+                <button className={`btn ${viewState === MINT ? "btn-primary" : "btn-inverse"}`} onClick={() => this.changeDisplayState(MINT)}>Mint</button>
+              </li>
+              <li className="nav-item">
+                <button className={`btn ${viewState === VIEW_OWNER ? "btn-primary" : "btn-inverse"}`} onClick={() => this.changeDisplayState(VIEW_OWNER)}>My NFTs</button>
+              </li>
+            </ul>
+          </div>
+        </nav>
+
+        <br />
+        <br />
+        <img src={logo} alt="logo" />
+
+          <div className="mint">
+    
+            <h3>Minter</h3>
+    
+            <div className="minting-form">
+              {/* Name */}
+              <div className="name">
+                <label htmlFor="nft_name"><strong>Name:</strong></label>
+                <input 
+                  type="text"
+                  name="nft_name" 
+                  className="form-control" 
+                  value={this.state.metadata.name} 
+                  onChange={this.handleName}
+                  placeholder="My NFT name" 
+                />
+              </div>
+    
+              {/* Description */}
+              <div className="description">
+                <label htmlFor="nft_descr"><strong>Description:</strong></label>
+                <textarea 
+                  name="nft_descr" 
+                  className="form-control"
+                  value={this.state.metadata.description}
+                  onChange={this.handleDescription}
+                >
+                </textarea>
+              </div>
+              
+              {/* Image */}
+              <div className="image">
+                <p className="art">
+                  <label><strong>Art:</strong></label><br/>
+                  <span 
+                    style={{fontStyle: "italic"}}
+                  >*accepted file types: png, gif, jpeg</span>
+                </p>
+                <div 
+                  id="dropzone"
+                  className="dropzone waiting" 
+                  onDragOver={this.dragover} 
+                  onDragLeave={this.dragleave} 
+                  onDrop={this.drop}
+                >
+                  <input 
+                    type="file" 
+                    name="fields[assetsFieldHandle][]" 
+                    id="assetsFieldHandle" 
+                    className="hidden" 
+                    onChange={this.onChange}
+                    accept="image/png, image/gif, image/jpeg"
+                  />
+                  <label htmlFor="assetsFieldHandle" className="block cursor-pointer">
+                    <div>
+                      <p className="instr-t">Drag and drop NFT art here</p>
+                    </div>
+                  </label>
+                  
+                  {/* Dropped files */}
+                  <ul className="files-list-ul">
+                    {files}
+                  </ul>
+                </div>
+    
+                <div className="controls minting-controls">
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={this.ipfsUpload}
+                  >Mint NFT</button>
+                </div>
+    
+              </div>
+            </div>
+    
+          </div>
+
+          {/* Loading */}
+          <br />
+          <br />
+          {Loading(loadingMsg)}
+
+          {/* Logs map */}
+          <br />
+          <br />
+          <div className="logs">
+            <div>{logItems}</div>
+          </div>
         </div>
       );
     }
@@ -749,14 +925,6 @@ function View(state, nfts, accounts, transferNft) {
 
         </div>
       );
-    }
-    case MINT: {
-      return(
-        <div className="mint">Mint</div>
-      );
-    }
-    case VIEW_TOKEN: { // XXX: Currently not used
-      return;
     }
     case VIEW_OWNER: {
 
