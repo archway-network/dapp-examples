@@ -83,7 +83,7 @@ export default class App extends Component {
               let userAddress = accounts[0].address;
 
               // Update state
-              this.setState({
+              await this.setState({
                 accounts: accounts,
                 userAddress: userAddress,
                 cwClient: cwClient,
@@ -101,6 +101,9 @@ export default class App extends Component {
                 gasPrice: this.state.gasPrice,
                 offlineSigner: this.state.offlineSigner
               });
+
+              // Get account balances
+              await this.getBalances();
 
               // Load NFTs
               await this.loadNfts();
@@ -620,6 +623,9 @@ export default class App extends Component {
   }
 
   render() {
+    // Constants
+    const coinDenom = this.state.chainMeta.currencies[0].coinDenom;
+
     // State
     const loadingMsg = this.state.loadingMsg;
     const userAddress = this.state.userAddress;
@@ -679,24 +685,44 @@ export default class App extends Component {
         <div className="content">
 
           <nav className="navbar navbar-expand-lg navbar-light bg-light">
-          <div className="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul className="navbar-nav mr-auto">
-              <li className="nav-item">
-                <button className={`btn ${viewState === MARKET ? "btn-primary" : "btn-inverse"}`} onClick={() => this.changeDisplayState(MARKET)}>Market</button>
-              </li>
-              <li className="nav-item">
-                <button className={`btn ${viewState === MINT ? "btn-primary" : "btn-inverse"}`} onClick={() => this.changeDisplayState(MINT)}>Mint</button>
-              </li>
-              <li className="nav-item">
-                <button className={`btn ${viewState === VIEW_OWNER ? "btn-primary" : "btn-inverse"}`} onClick={() => this.changeDisplayState(VIEW_OWNER)}>My NFTs</button>
-              </li>
-            </ul>
-          </div>
-        </nav>
+            <div className="collapse navbar-collapse" id="navbarSupportedContent">
+              <ul className="navbar-nav mr-auto">
+                <li className="nav-item">
+                  <button className={`btn ${viewState === MARKET ? "btn-primary" : "btn-inverse"}`} onClick={() => this.changeDisplayState(MARKET)}>Market</button>
+                </li>
+                <li className="nav-item">
+                  <button className={`btn ${viewState === MINT ? "btn-primary" : "btn-inverse"}`} onClick={() => this.changeDisplayState(MINT)}>Mint</button>
+                </li>
+                <li className="nav-item">
+                  <button className={`btn ${viewState === VIEW_OWNER ? "btn-primary" : "btn-inverse"}`} onClick={() => this.changeDisplayState(VIEW_OWNER)}>My NFTs</button>
+                </li>
+              </ul>
+            </div>
+          </nav>
 
-        <br />
-        <br />
-        <img src={logo} alt="logo" />
+          <br />
+          <br />
+          <img src={logo} alt="logo" />
+
+          {/* Account balance */}
+          <br />
+          <br />
+          <div className="accounts">
+            <div className="status status-display balances">
+              <ul className="status accounts-list">
+                <li className="accounts account-item">
+                  {/* Address */}
+                  <strong>Account:</strong>&nbsp;
+                  <span>{this.state.accounts[0].address}</span>
+                  {/* Balance */}
+                  <div>
+                    <strong>Balance:</strong>&nbsp;
+                    <span>{parseInt(this.state.accounts[0].balance.amount) / 100000 + ' ' + this.state.chainMeta.currencies[0].coinDenom}</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
 
           <div className="mint">
     
@@ -814,6 +840,11 @@ export default class App extends Component {
         <br />
         <img src={logo} alt="logo" />
 
+        {/* Account balance */}
+        <br />
+        <br />
+        {Accounts(accounts, coinDenom)}
+
         {/* Current View */}
         <br />
         <br />
@@ -845,6 +876,36 @@ function Loading(msg) {
   return (
     <div className="loading">
       <p>{msg}</p>
+    </div>
+  );
+}
+
+function Accounts(accounts = null, coinDenom = null) {
+  if (!accounts || !coinDenom) {
+    return;
+  } else if (!accounts[0]) {
+    return;
+  } else if (!accounts[0]['balance']) {
+    return;
+  } else if (!accounts[0].balance['amount']) {
+    return;
+  }
+  return (
+    <div className="accounts">
+      <div className="status status-display balances">
+        <ul className="status accounts-list">
+          <li className="accounts account-item">
+            {/* Address */}
+            <strong>Account:</strong>&nbsp;
+            <span>{accounts[0].address}</span>
+            {/* Balance */}
+            <div>
+              <strong>Balance:</strong>&nbsp;
+              <span>{parseInt(accounts[0].balance.amount) / 100000 + ' ' + coinDenom}</span>
+            </div>
+          </li>
+        </ul>
+      </div>
     </div>
   );
 }
