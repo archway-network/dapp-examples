@@ -1,4 +1,4 @@
-# archway-increment-dapp-vuejs
+# archway-nft-basic-dapp-vuejs
 
 ## Project setup
 ```
