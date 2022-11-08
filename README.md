@@ -7,11 +7,11 @@ Frontends currently are available in either [Vue.js](https://vuejs.org/) or [Rea
 ## dapps Included
 
 - [Increment Template](https://github.com/archway-network/archway-templates/tree/main/increment)
-    - [Vue.js](https://github.com/archway-network/dApp-examples/tree/main/vuejs/increment)
-    - [React](https://github.com/archway-network/dApp-examples/tree/main/react/increment)
+    - [Vue.js](https://github.com/archway-network/dapp-examples/tree/main/vuejs/increment)
+    - [React](https://github.com/archway-network/dapp-examples/tree/main/react/increment)
  - [NFT On-chain Metadata Template](https://github.com/archway-network/archway-templates/tree/main/cw721/on-chain-metadata)
-     - [Vue.js](https://github.com/archway-network/dApp-examples/tree/main/vuejs/nft-basic)
-     - [React](https://github.com/archway-network/dApp-examples/tree/main/react/nft-basic)
+     - [Vue.js](https://github.com/archway-network/dapp-examples/tree/main/vuejs/nft-basic)
+     - [React](https://github.com/archway-network/dapp-examples/tree/main/react/nft-basic)
 
 ## Setting Environment Variables
 
