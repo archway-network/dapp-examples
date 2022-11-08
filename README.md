@@ -1,10 +1,10 @@
-# Archway dApp Examples
+# Archway dapp Examples
 
-Here you'll find example frontend dApps for the starter code templates available in the [Archway Developer CLI](https://github.com/archway-network/archway-cli).
+Here you'll find example frontend dapps for the starter code templates available in the [Archway Developer CLI](https://github.com/archway-network/archway-cli).
 
 Frontends currently are available in either [Vue.js](https://vuejs.org/) or [React](https://reactjs.org/) variants.
 
-## dApps Included
+## dapps Included
 
 - [Increment Template](https://github.com/archway-network/archway-templates/tree/main/increment)
     - [Vue.js](https://github.com/archway-network/dApp-examples/tree/main/vuejs/increment)
@@ -22,8 +22,8 @@ When you've decided which example you'd like to run, change to that directory, c
 Example:
 
 ```bash
-git clone git@github.com:archway-network/dApp-examples.git
-cd dApp-examples/vuejs/increment
+git clone git@github.com:archway-network/dapp-examples.git
+cd dapp-examples/vuejs/increment
 cp env.example .env
 vim .env
 cat .env
@@ -33,7 +33,7 @@ cat .env
 
 ## Packages
 
-Working together in concert, the following packages provide dApp frontends with Archway capabilities:
+Working together in concert, the following packages provide dapp frontends with Archway capabilities:
 
 - [@cosmjs/stargate](https://www.npmjs.com/package/@cosmjs/stargate)
 - [@cosmjs/cosmwasm-stargate](https://www.npmjs.com/package/@cosmjs/cosmwasm-stargate)
