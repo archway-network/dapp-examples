@@ -3,7 +3,7 @@ import logo from './logo.svg';
 import './App.css';
 
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
-import { calculateFee, GasPrice } from "@cosmjs/stargate";
+import { GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
 
 const RPC = ConstantineInfo.rpc;
@@ -42,13 +42,16 @@ export default class App extends Component {
           if (window['keplr']) {
             if (window.keplr['experimentalSuggestChain']) {
               await window.keplr.experimentalSuggestChain(this.state.chainMeta)
-              await window.keplr.enable(this.state.chainMeta.chainId);              
+              await window.keplr.enable(this.state.chainMeta.chainId);            
               let offlineSigner = await window.getOfflineSigner(this.state.chainMeta.chainId);
-              console.log('offlineSigner', offlineSigner);
-              let cwClient = await SigningCosmWasmClient.connectWithSigner(this.state.rpc, offlineSigner);
+              let gasPrice = GasPrice.fromString('0.002'+this.state.chainMeta.currencies[0].coinMinimalDenom);
+              let cwClient = await SigningCosmWasmClient.connectWithSigner(
+                this.state.rpc, 
+                offlineSigner,
+                { gasPrice:  gasPrice }
+              );
               let accounts = await offlineSigner.getAccounts();
               let queryHandler = cwClient.queryClient.wasm.queryContractSmart;
-              let gasPrice = GasPrice.fromString('0.002uconst');
               let userAddress = accounts[0].address;
 
               // Update state
@@ -155,16 +158,14 @@ export default class App extends Component {
     let entrypoint = {
       increment: {}
     };
-    let txFee = calculateFee(300000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
     console.log('Tx args', {
       senderAddress: this.state.userAddress, 
       contractAddress: this.state.contract, 
-      msg: entrypoint, 
-      fee: txFee
+      msg: entrypoint
     });
     // Send Tx
     try {
-      let tx = await this.state.cwClient.execute(this.state.userAddress, this.state.contract, entrypoint, txFee);
+      let tx = await this.state.cwClient.execute(this.state.userAddress, this.state.contract, entrypoint, "auto");
       console.log('Increment Tx', tx);
       // Update Logs
       if (tx.logs) {
@@ -237,10 +238,9 @@ export default class App extends Component {
         count: 0
       }
     };
-    let txFee = calculateFee(300000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
     // Send Tx
     try {
-      let tx = await this.state.cwClient.execute(this.state.userAddress, this.state.contract, entrypoint, txFee);
+      let tx = await this.state.cwClient.execute(this.state.userAddress, this.state.contract, entrypoint, "auto");
       console.log('Reset Tx', tx);
       // Update Logs
       if (tx.logs) {

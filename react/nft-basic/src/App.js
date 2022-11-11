@@ -3,7 +3,7 @@ import logo from './logo.svg';
 import './App.css';
 
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
-import { calculateFee, GasPrice } from "@cosmjs/stargate";
+import { GasPrice } from "@cosmjs/stargate";
 import { ConstantineInfo } from './chain.info.constantine';
 
 import { IPFS } from './ipfs';
@@ -75,11 +75,14 @@ export default class App extends Component {
               await window.keplr.experimentalSuggestChain(this.state.chainMeta)
               await window.keplr.enable(this.state.chainMeta.chainId);              
               let offlineSigner = await window.getOfflineSigner(this.state.chainMeta.chainId);
-              console.log('offlineSigner', offlineSigner);
-              let cwClient = await SigningCosmWasmClient.connectWithSigner(this.state.rpc, offlineSigner);
+              let gasPrice = GasPrice.fromString('0.002'+this.state.chainMeta.currencies[0].coinMinimalDenom);
+              let cwClient = await SigningCosmWasmClient.connectWithSigner(
+                this.state.rpc, 
+                offlineSigner,
+                { gasPrice:  gasPrice }
+              );
               let accounts = await offlineSigner.getAccounts();
               let queryHandler = cwClient.queryClient.wasm.queryContractSmart;
-              let gasPrice = GasPrice.fromString('0.002uconst');
               let userAddress = accounts[0].address;
 
               // Update state
@@ -504,17 +507,15 @@ export default class App extends Component {
 
     console.log('Entrypoint', entrypoint);
 
-    let txFee = calculateFee(300000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
     console.log('Tx args', {
       senderAddress: this.state.accounts[0].address, 
       contractAddress: this.state.contract, 
-      msg: entrypoint, 
-      fee: txFee
+      msg: entrypoint
     });
 
     try {
       // Send Tx
-      let tx = await this.state.cwClient.execute(this.state.accounts[0].address, this.state.contract, entrypoint, txFee);
+      let tx = await this.state.cwClient.execute(this.state.accounts[0].address, this.state.contract, entrypoint, "auto");
       console.log('Mint Tx', tx);
 
       this.setState({
@@ -583,11 +584,9 @@ export default class App extends Component {
       loadingStatus: true,
       loadingMsg: "Transferring NFT to "+ recipient +"...",
     });
-
-    let txFee = calculateFee(300000, this.state.gasPrice); // XXX TODO: Fix gas estimation (https://github.com/cosmos/cosmjs/issues/828)
     // Send Tx
     try {
-      let tx = await this.state.cwClient.execute(this.state.accounts[0].address, this.state.contract, entrypoint, txFee);
+      let tx = await this.state.cwClient.execute(this.state.accounts[0].address, this.state.contract, entrypoint, "auto");
       console.log('Transfer Tx', tx);
       
       this.setState({
