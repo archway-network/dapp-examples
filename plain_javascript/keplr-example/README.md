@@ -1,7 +1,6 @@
 # Keplr Example
-This is a simple example if how to Keplr extension injects the offline signer that is compatible with cosmJS. 
+This example demonstrates a basic use case where the Keplr extension injects an offline signer that is compatible with arch3.js.
 
-![](splash.png)
 ## Local Development
 
 Install dependencies
@@ -15,5 +14,3 @@ Run development Server
 ```
 npm run dev
 ```
-
-For more details see comments on `src/main.js`.
