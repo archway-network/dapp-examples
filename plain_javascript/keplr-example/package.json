@@ -1,0 +1,20 @@
+{
+  "name": "keplr-arch3.js-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "webpack-dev-server"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "html-webpack-plugin": "^4.3.0",
+    "webpack-cli": "^4.10.0",
+    "webpack-dev-server": "^4.13.2"
+  },
+  "dependencies": {
+    "@archwayhq/arch3.js": "^0.1.0"
+  }
+}
