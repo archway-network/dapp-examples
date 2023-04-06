@@ -6,10 +6,10 @@ const currency = {
   };
   
   const ChainInfo = {
-    chainId: 'constantine-1',
+    chainId: 'constantine-2',
     chainName: 'Constantine',
-    rpc: 'https://rpc.constantine-1.archway.tech',
-    rest: 'https://api.constantine-1.archway.tech',
+    rpc: 'https://rpc.constantine-2.archway.tech',
+    rest: 'https://api.constantine-2.archway.tech',
     stakeCurrency: currency,
     bip44: {
       coinType: 118,
