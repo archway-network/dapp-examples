@@ -18,7 +18,9 @@ async function main() {
   const mnemonic = process.env.MNEMONIC;
   const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix: network.prefix });
 
-  const accountAddress = process.env.ACCOUNT_ADDRESS;
+  const accounts = await wallet.getAccounts();
+
+  const accountAddress = accounts[0].address;
   const beneficiaryAddress = process.env.BENEFICIARY_ADDRESS;
 
   const signingClient = await SigningArchwayClient.connectWithSigner(network.endpoint, wallet, {
