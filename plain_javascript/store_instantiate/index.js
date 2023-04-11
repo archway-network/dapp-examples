@@ -17,7 +17,6 @@ async function main() {
 
   const mnemonic = process.env.MNEMONIC;
   const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix: network.prefix });
-
   const accounts = await wallet.getAccounts();
 
   const accountAddress = accounts[0].address;
@@ -51,10 +50,10 @@ async function main() {
     '', // optional memo
   );
 
-  if (broadcastResult.code == 0) {
-    console.log("Storage successful:", broadcastResult.transactionHash);
+  if (broadcastResult.code !== undefined && broadcastResult.code !== 0) {
+    console.log("Storage failed:", broadcastResult.log || broadcastResult.rawLog);
   } else {
-    console.log("Storage failed:", broadcastResult.rawLog);
+    console.log("Storage successful:", broadcastResult.transactionHash);
   }
 
   const rawLog = JSON.parse(broadcastResult.rawLog);
@@ -89,10 +88,10 @@ async function main() {
     '', // optional memo
   );
 
-  if (broadcastResult2.code == 0) {
-    console.log("Instantiation successful:", broadcastResult2.transactionHash);
+  if (broadcastResult2.code !== undefined && broadcastResult2.code !== 0) {
+    console.log("Instantiation failed:", broadcastResult2.log || broadcastResult2.rawLog);
   } else {
-    console.log("Instantiation failed:", broadcastResult2.rawLog);
+    console.log("Instantiation successful:", broadcastResult2.transactionHash);
   }
 }
 

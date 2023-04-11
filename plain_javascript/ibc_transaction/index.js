@@ -30,7 +30,7 @@ async function main() {
     typeUrl: "/ibc.applications.transfer.v1.MsgTransfer",
     value: {
       sourcePort: 'transfer',
-      sourceChannel: 'channel-9', // channel of the bridge
+      sourceChannel: 'channel-23', // channel of the bridge
       token: {
         denom: 'uconst',
         amount: '1000'
@@ -49,10 +49,10 @@ async function main() {
     'IBC Transfer', // optional memo
   );
   
-  if (broadcastResult.code == 0) {
-    console.log("Transaction successful:", broadcastResult.transactionHash);
+  if (broadcastResult.code !== undefined && broadcastResult.code !== 0) {
+    console.log("Transaction failed:", broadcastResult.log || broadcastResult.rawLog);
   } else {
-    console.log("Transaction failed:", broadcastResult.rawLog);
+    console.log("Transaction successful:", broadcastResult.transactionHash);
   }
 }
 
