@@ -1,20 +1,19 @@
 import { SigningArchwayClient } from '@archwayhq/arch3.js';
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
-import { GasPrice } from "@cosmjs/stargate";
 import fs from 'fs';
 import * as base64js from "base64-js";
-import Long from "long";
 import dotenv from "dotenv";
 
 dotenv.config();
 
 async function main() {
   const network = {
-    chainId: 'constantine-2',
-    endpoint: 'https://rpc.constantine-2.archway.tech',
+    chainId: 'constantine-3',
+    endpoint: 'https://rpc.constantine.archway.tech',
     prefix: 'archway',
   };
 
+  // Get wallet and accounts from mnemonic
   const mnemonic = process.env.MNEMONIC;
   const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix: network.prefix });
   const accounts = await wallet.getAccounts();
@@ -22,76 +21,60 @@ async function main() {
   const accountAddress = accounts[0].address;
   const beneficiaryAddress = process.env.BENEFICIARY_ADDRESS;
 
-  const signingClient = await SigningArchwayClient.connectWithSigner(network.endpoint, wallet, {
-    gasPrice: GasPrice.fromString('0.02uconst'),
-    prefix: network.prefix,
-  });
+  const signingClient = await SigningArchwayClient.connectWithSigner(network.endpoint, wallet);
+
+  // Upload a contract
 
   const wasmCode = fs.readFileSync('./hackatom.wasm');
   const encoded = Buffer.from(wasmCode, 'binary').toString('base64');
   const contractData = base64js.toByteArray(encoded);
 
-  const msgStoreCode = {
-    typeUrl: "/cosmwasm.wasm.v1.MsgStoreCode",
-    value: {
-      sender: accountAddress,
-      wasmByteCode: contractData,
-      instantiatePermission: { // optional
-        permission: 3,
-        //address: accountAddress,
-      }
-    },
-  };
-
-  const broadcastResult = await signingClient.signAndBroadcast(
+  const uploadResult = await signingClient.upload(
     accountAddress,
-    [msgStoreCode],
-    'auto', // Can manually set fee here if needed
-    '', // optional memo
+    contractData,
+    'auto',
+    '',
   );
 
-  if (broadcastResult.code !== undefined && broadcastResult.code !== 0) {
-    console.log("Storage failed:", broadcastResult.log || broadcastResult.rawLog);
+  if (uploadResult.code !== undefined && uploadResult.code !== 0) {
+    console.log("Storage failed:", uploadResult.log || uploadResult.rawLog);
   } else {
-    console.log("Storage successful:", broadcastResult.transactionHash);
+    console.log("Storage successful:", uploadResult.transactionHash);
   }
 
-  const rawLog = JSON.parse(broadcastResult.rawLog);
-  const codeId = rawLog[0].events[1].attributes.find(attr => attr.key === "code_id").value;
+  // Instantiate a contract
 
-  const msgInstantiate = {
-    typeUrl: "/cosmwasm.wasm.v1.MsgInstantiateContract",
-    value: {
-      sender: accountAddress,
-      admin: accountAddress,
-      codeId: new Long(codeId),  // Code id that was returned on previous step (store)
-      label: 'my-instance-label', // replace with any value you want
-      msg: new TextEncoder().encode(  // has to be encoded in utf8
-        JSON.stringify({
-          verifier: accountAddress,   // initial params of contract, depends on your contract
-          beneficiary: beneficiaryAddress,
-        }),
-      ),
-      funds: [ // Funds transferred to contract, can be an empty array
-        {
-          denom: 'uconst',
-          amount: '1000'
-        }
-      ]
-    },
+  const codeId = uploadResult.codeId;
+
+  const msg = {
+    verifier: accountAddress, 
+    beneficiary: beneficiaryAddress,
   };
 
-  const broadcastResult2 = await signingClient.signAndBroadcast(
+  const instantiateOptions = {
+    memo: "Instantiating a new contract",
+    funds: [
+      {
+        denom: 'aconst',
+        amount: '1000000000000000000'
+      }
+    ],
+    admin: accounts[0].address
+  };
+
+  const instantiateResult = await signingClient.instantiate(
     accountAddress,
-    [msgInstantiate],
-    'auto', // Can manually set fee here if needed
-    '', // optional memo
+    codeId,
+    msg,
+    'my-instance-label',
+    'auto',
+    instantiateOptions
   );
 
-  if (broadcastResult2.code !== undefined && broadcastResult2.code !== 0) {
-    console.log("Instantiation failed:", broadcastResult2.log || broadcastResult2.rawLog);
+  if (instantiateResult.code !== undefined && instantiateResult.code !== 0) {
+    console.log("Instantiation failed:", instantiateResult.log || instantiateResult.rawLog);
   } else {
-    console.log("Instantiation successful:", broadcastResult2.transactionHash);
+    console.log("Instantiation successful:", instantiateResult.transactionHash);
   }
 }
 

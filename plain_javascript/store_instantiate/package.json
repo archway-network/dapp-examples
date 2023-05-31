@@ -11,7 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@archwayhq/arch3.js": "^0.1.0",
+    "@archwayhq/arch3.js": "^0.3.0",
     "base64-js": "^1.5.1",
     "dotenv": "^16.0.3",
     "long": "^5.2.1"
