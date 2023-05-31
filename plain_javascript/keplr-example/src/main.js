@@ -1,6 +1,6 @@
 import { SigningArchwayClient } from '@archwayhq/arch3.js';
+import BigNumber from 'bignumber.js';
 import ChainInfo from './constantine.config.js';
-import { GasPrice } from "@cosmjs/stargate";
 
 window.onload = async () => {
     if (!window.getOfflineSigner || !window.keplr) {
@@ -9,6 +9,12 @@ window.onload = async () => {
         if (window.keplr.experimentalSuggestChain) {
             try {
                 await window.keplr.experimentalSuggestChain(ChainInfo);
+
+                window.keplr.defaultOptions = {
+                    sign: {
+                        preferNoSetFee: true,
+                    }
+                }
             } catch {
                 alert("Failed to suggest the chain");
             }
@@ -16,83 +22,36 @@ window.onload = async () => {
             alert("Please use the recent version of keplr extension");
         }
     }
-
-    /**await window.keplr.enable(ChainInfo.chainId);
-
-    const offlineSigner = window.keplr.getOfflineSigner(ChainInfo.chainId);
-
-    const accounts = await offlineSigner.getAccounts();
-
-    const signingClient = await SigningArchwayClient.connectWithSigner(ChainInfo.rpc, offlineSigner, {
-        gasPrice: GasPrice.fromString('0.02uconst'),
-    });**/
 };
 
 document.sendForm.onsubmit = () => {
-    const recipient = document.sendForm.recipient.value;
-
-    let amount = document.sendForm.amount.value;
-    amount = parseFloat(amount);
-    if (isNaN(amount)) {
-        alert("Invalid amount");
-        return false;
-    }
-
-    amount *= 1000000;
-    amount = Math.floor(amount);
-
     (async () => {
         const chainId = ChainInfo.chainId;
 
         await window.keplr.enable(chainId);
 
         const offlineSigner = window.keplr.getOfflineSigner(chainId);
+        const signingClient = await SigningArchwayClient.connectWithSigner(ChainInfo.rpc, offlineSigner);
 
         const accounts = await offlineSigner.getAccounts();
+        const destinationAddress = document.sendForm.recipient.value;
 
-        const signingClient = await SigningArchwayClient.connectWithSigner(ChainInfo.rpc, offlineSigner, {
-            gasPrice: GasPrice.fromString('0.02uconst'),
-        });
-
-        /**const client = await SigningStargateClient.connectWithSigner(
-            ChainInfo.rpc,
-            offlineSigner
-        );**/
+        let amount = new BigNumber(document.sendForm.amount.value);
+        amount = amount.multipliedBy(new BigNumber('1e18'));
 
         const amountFinal = {
-            denom: 'uconst',
+            denom: 'aconst',
             amount: amount.toString(),
         }
 
-        const fee = {
-            amount: [{
-                denom: 'uconst',
-                amount: '5000',
-            }, ],
-            gas: '200000',
-        }
-
         const memo = "Transfer token to another account";
-        const msgSend = {
-            fromAddress: accounts[0].address,
-            toAddress: recipient,
-            amount: [amountFinal],
-        };
 
-        const msgAny = {
-            typeUrl: "/cosmos.bank.v1beta1.MsgSend",
-            value: msgSend,
-        };
-
-        /**const signedTx = await client.signAndBroadcast(accounts[0].address, [msgAny], fee, memo);
-
-        console.log(signedTx);**/
-
-        const broadcastResult = await signingClient.signAndBroadcast(
+        const broadcastResult = await signingClient.sendTokens(
             accounts[0].address,
-            [msgAny],
-            fee,
-            memo, // optional
+            destinationAddress,
+            [amountFinal],
+            "auto",
+            memo,
         );
 
         if (broadcastResult.code !== undefined &&
