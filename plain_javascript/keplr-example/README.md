@@ -1,5 +1,6 @@
 # Keplr Example
-This example demonstrates a basic use case where the Keplr extension injects an offline signer that is compatible with arch3.js.
+
+This example demonstrates a basic use case of sending tokens from one account to another.
 
 ## Install dependencies
 
