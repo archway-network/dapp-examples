@@ -45,7 +45,7 @@ import { SigningArchwayClient } from '@archwayhq/arch3.js';
 import { ConstantineInfo } from './chain.info.constantine';
 
 const RPC = ConstantineInfo.rpc;
-const ContractAddress = "archway1ce97k929shkfzp633edt34hhv3uaqlkgsu3j4xqwjlg2fmg8y5hsw4lewj";
+const ContractAddress = import.meta.env.VITE_APP_CONTRACT_ADDRESS;
 
 export default {
   name: "App",
