@@ -1,6 +1,5 @@
 import { SigningArchwayClient } from '@archwayhq/arch3.js';
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
-import { GasPrice } from "@cosmjs/stargate";
 import Long from "long";
 import dotenv from "dotenv";
 
@@ -8,8 +7,8 @@ dotenv.config();
 
 async function main() {
   const network = {
-    chainId: 'constantine-2',
-    endpoint: 'https://rpc.constantine-2.archway.tech',
+    chainId: 'constantine-3',
+    endpoint: 'https://rpc.constantine.archway.tech',
     prefix: 'archway',
   };
 
@@ -21,19 +20,16 @@ async function main() {
   const accountAddress = accounts[0].address;
   const destinationAddress = process.env.COSMOS_ADDRESS;
   
-  const signingClient = await SigningArchwayClient.connectWithSigner(network.endpoint, wallet, {
-    gasPrice: GasPrice.fromString('0.02uconst'),
-    prefix: network.prefix,
-  });
+  const signingClient = await SigningArchwayClient.connectWithSigner(network.endpoint, wallet);
 
   const msgIBCTransfer = {
     typeUrl: "/ibc.applications.transfer.v1.MsgTransfer",
     value: {
       sourcePort: 'transfer',
-      sourceChannel: 'channel-23', // channel of the bridge
+      sourceChannel: 'channel-1', // channel of the bridge
       token: {
-        denom: 'uconst',
-        amount: '1000'
+        denom: 'aconst',
+        amount: '1000000000000000000'
       },
       sender: accountAddress,
       receiver: destinationAddress,
@@ -45,7 +41,7 @@ async function main() {
   const broadcastResult = await signingClient.signAndBroadcast(
     accountAddress,
     [msgIBCTransfer],
-    'auto', // Can manually set fee here if needed
+    'auto',
     'IBC Transfer', // optional memo
   );
   
