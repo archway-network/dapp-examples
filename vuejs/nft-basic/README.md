@@ -1,31 +1,32 @@
-# archway-nft-basic-dapp-vuejs
+# Archway Baic NFT Project
 
-## Project setup
-```
+This vue.js dapp frontend will interact with a basic NFT contract that allows you to mint and transfer your own NFTs. Follow the guide at https://docs.archway.io/developers/guides/nft-project/start.
+
+## Recommended IDE Setup
+
+[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+
+## Customize configuration
+
+See [Vite Configuration Reference](https://vitejs.dev/config/).
+
+## Project Setup
+
+```sh
 npm install
 cp env.example .env
-# Now configure .env with your Infura account and contract address
 ```
 
-## Configuring project on Infura.io
+Now, add your NFT contract address, along with the Infura API Key and API Secret, to the **.env** file.
 
-After creating a project on infura.io, navigate to the security tab of the project. Set your IP whitelist settings for `localhost`, and add you [User Agent](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent) string. You can determine your user agent string by opening dev tools of your browser, and typing `navigator.userAgent` into the JavaScript console.
+### Compile and Hot-Reload for Development
 
-
-### Compiles and hot-reloads for development
-```
-npm run serve
+```sh
+npm run dev
 ```
 
-### Compiles and minifies for production
-```
+### Compile and Minify for Production
+
+```sh
 npm run build
 ```
-
-### Lints and fixes files
-```
-npm run lint
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).

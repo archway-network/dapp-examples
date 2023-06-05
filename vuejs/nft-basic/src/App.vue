@@ -207,14 +207,13 @@
 </template>
 
 <script>
-import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
-import { GasPrice } from "@cosmjs/stargate";
+import { SigningArchwayClient } from '@archwayhq/arch3.js';
 import { ConstantineInfo } from './chain.info.constantine';
 import axios from 'axios';
 import ipfsClient from './ipfs';
 
 const RPC = ConstantineInfo.rpc;
-const ContractAddress = process.env.VUE_APP_CONTRACT_ADDRESS;
+const ContractAddress = import.meta.env.VITE_APP_CONTRACT_ADDRESS;
 
 const IPFS_PREFIX = 'ipfs://';
 const IPFS_SUFFIX = '/';
@@ -237,9 +236,6 @@ export default {
     axios: axios,
     chainMeta: ConstantineInfo,
     offlineSigner: null,
-    gas: {
-      price: null
-    },
     handlers: {
       query: null
     },
@@ -285,11 +281,9 @@ export default {
               await window.keplr.experimentalSuggestChain(this.chainMeta)
               await window.keplr.enable(this.chainMeta.chainId);
               this.offlineSigner = await window.getOfflineSigner(this.chainMeta.chainId);
-              this.gas.price = GasPrice.fromString('0.002'+this.chainMeta.currencies[0].coinMinimalDenom);
-              this.wasmClient = await SigningCosmWasmClient.connectWithSigner(
+              this.wasmClient = await SigningArchwayClient.connectWithSigner(
                 this.rpc, 
-                this.offlineSigner, 
-                { gasPrice:  this.gas.price }
+                this.offlineSigner
               );
               this.accounts = await this.offlineSigner.getAccounts();
 
@@ -305,8 +299,7 @@ export default {
               console.log('dApp Initialized', {
                 user: this.accounts[0].address,
                 client: this.wasmClient,
-                handlers: this.handlers,
-                gas: this.gas
+                handlers: this.handlers
               });
 
               // Constantine account balances ('uconst')

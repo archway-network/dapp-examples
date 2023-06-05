@@ -1,9 +1,10 @@
 import { create, urlSource } from 'ipfs-http-client';
+import { Buffer } from 'buffer';
 
-const INFURA_PROJECT = process.env.VUE_APP_INFURA_PROJECT_ID;
-const INFURA_API_SECRET = process.env.VUE_APP_INFURA_API_KEY;
+const INFURA_API_KEY = import.meta.env.VITE_APP_INFURA_API_KEY;
+const INFURA_API_SECRET = import.meta.env.VITE_APP_INFURA_API_SECRET;
 
-const AuthHeader = 'Basic ' + Buffer.from(INFURA_PROJECT + ":" + INFURA_API_SECRET).toString('base64');
+const AuthHeader = 'Basic ' + Buffer.from(INFURA_API_KEY + ":" + INFURA_API_SECRET).toString('base64');
 const ipfsGateway = 'https://cloudflare-ipfs.com/ipfs/';
 
 const upload = async function (uploadPath) {
