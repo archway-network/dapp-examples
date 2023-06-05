@@ -1,6 +1,4 @@
 <template>
-  <img alt="logo" src="./assets/logo.svg">
-  
   <!-- Not Connected -->
   <div class="content" v-if="!accounts">
     <!-- Controls -->
@@ -43,12 +41,11 @@
 </template>
 
 <script>
-import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
-import { GasPrice } from "@cosmjs/stargate";
+import { SigningArchwayClient } from '@archwayhq/arch3.js';
 import { ConstantineInfo } from './chain.info.constantine';
 
 const RPC = ConstantineInfo.rpc;
-const ContractAddress = process.env.VUE_APP_CONTRACT_ADDRESS;
+const ContractAddress = import.meta.env.VITE_APP_CONTRACT_ADDRESS;
 
 export default {
   name: "App",
@@ -58,9 +55,6 @@ export default {
     cwClient: null,
     chainMeta: ConstantineInfo,
     offlineSigner: null,
-    gas: {
-      price: null
-    },
     handlers: {
       query: null
     },
@@ -82,12 +76,15 @@ export default {
             if (window.keplr['experimentalSuggestChain']) {
               await window.keplr.experimentalSuggestChain(this.chainMeta)
               await window.keplr.enable(this.chainMeta.chainId);
+              window.keplr.defaultOptions = {
+                sign: {
+                  preferNoSetFee: true,
+                }
+              }
               this.offlineSigner = await window.getOfflineSigner(this.chainMeta.chainId);
-              this.gas.price = GasPrice.fromString('0.002'+this.chainMeta.currencies[0].coinMinimalDenom);
-              this.cwClient = await SigningCosmWasmClient.connectWithSigner(
+              this.cwClient = await SigningArchwayClient.connectWithSigner(
                 this.rpc, 
-                this.offlineSigner, 
-                { gasPrice:  this.gas.price }
+                this.offlineSigner
               );
               this.accounts = await this.offlineSigner.getAccounts();
 
@@ -103,8 +100,7 @@ export default {
               console.log('dApp Initialized', {
                 user: this.accounts[0].address,
                 client: this.cwClient,
-                handlers: this.handlers,
-                gas: this.gas
+                handlers: this.handlers
               });
 
               await this.start();
