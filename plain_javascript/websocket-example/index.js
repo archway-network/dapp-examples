@@ -10,7 +10,7 @@ const subscription = ref();
 
 const queryForBalanceUpdate = async () => {
   try {
-    const websocket = new WebsocketClient('wss://rpc.constantine-2.archway.tech/websocket', error => console.error(error));
+    const websocket = new WebsocketClient('wss://rpc.constantine.archway.tech/websocket', error => console.error(error));
     const stream = websocket.listen({
       jsonrpc: '2.0',
       method: 'subscribe',

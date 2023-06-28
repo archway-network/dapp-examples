@@ -1,15 +1,15 @@
 const currency = {
     coinDenom: 'CONST',
     coinMinimalDenom: 'uconst',
-    coinDecimals: 6,
+    coinDecimals: 18,
     coinGeckoId: 'constantine-network',
   };
   
   const ChainInfo = {
-    chainId: 'constantine-2',
+    chainId: 'constantine-3',
     chainName: 'Constantine',
-    rpc: 'https://rpc.constantine-2.archway.tech',
-    rest: 'https://api.constantine-2.archway.tech',
+    rpc: 'https://rpc.constantine.archway.tech',
+    rest: 'https://api.constantine.archway.tech',
     stakeCurrency: currency,
     bip44: {
       coinType: 118,
