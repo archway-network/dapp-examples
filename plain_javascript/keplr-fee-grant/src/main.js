@@ -11,6 +11,12 @@ const feeGranterAddress = process.env.FEE_GRANTER_ADDRESS;
 
 let accounts, signerAddress, offlineSigner;
 
+// Get loader
+var loader = document.querySelector('.loading');
+
+// Hide the loader by default
+loader.style.display = 'none';
+
 window.onload = async () => {
     if (!window.getOfflineSigner || !window.keplr) {
         alert("Please install keplr extension");
@@ -121,9 +127,15 @@ document.incrementForm.onsubmit = () => {
       
         // Set the fee dynamically but the feeGranterAddress will pay the transaction fee if an allowance exists
         const fee = await signingClient.calculateFee(signerAddress, messages, undefined, 1.5, feeGranterAddress);
+
+        // Show the loader
+        loader.style.display = '';
       
         // Allow the user to sign the transaction via Keplr after which the transaction will be broadcasted on chain
         const broadcastResult = await signingClient.signAndBroadcast(signerAddress, messages, fee);
+
+        // Hide the loader
+        loader.style.display = 'none';
 
         if (broadcastResult.code !== undefined &&
             broadcastResult.code !== 0) {
