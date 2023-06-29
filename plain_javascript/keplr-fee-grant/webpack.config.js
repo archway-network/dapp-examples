@@ -1,5 +1,7 @@
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const path = require("path");
+// webpack.config.js
+const Dotenv = require('dotenv-webpack');
 
 module.exports = {
     resolve: {
@@ -30,6 +32,7 @@ module.exports = {
         new HtmlWebpackPlugin({
             template: "index.html",
             chunks: ["main"]
-        })
+        }),
+        new Dotenv()
     ]
 };

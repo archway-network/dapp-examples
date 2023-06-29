@@ -4,10 +4,10 @@ import { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx.js';
 import { toUtf8 } from '@cosmjs/encoding';
 
 // Set the increment smart contract address
-const smartContractAddress = "archway1ce97k929shkfzp633edt34hhv3uaqlkgsu3j4xqwjlg2fmg8y5hsw4lewj";
+const smartContractAddress = process.env.SMART_CONTRACT_ADDRESS;
 
 // Set the fee granter address who created the allowance for the signerAddress
-const feeGranterAddress = "archway12qj4v8jg5pxk6gsqct09sf9szhwql69xmf9fh4";
+const feeGranterAddress = process.env.FEE_GRANTER_ADDRESS;
 
 let accounts, signerAddress, offlineSigner;
 
@@ -39,8 +39,7 @@ window.onload = async () => {
                 signerAddress = accounts[0].address;
 
                 // Update values in web page
-                fetchData();
-                getCount();
+                updateValues();
             } catch {
                 alert("Failed to suggest the chain");
             }
@@ -50,13 +49,14 @@ window.onload = async () => {
     }
 };
 
+// This event listener is called each time a user selects a new Keplr account
 window.addEventListener("keplr_keystorechange", async () => {
-     // Update account data
-     accounts = await offlineSigner.getAccounts();
-     signerAddress = accounts[0].address;
+    // Update account data
+    accounts = await offlineSigner.getAccounts();
+    signerAddress = accounts[0].address;
 
-     fetchData();
-    getCount();
+    // Update values in web page
+    updateValues();
 });
 
 const fetchData = async () => {
@@ -68,8 +68,6 @@ const fetchData = async () => {
         document.getElementById('grantAllowance').textContent = JSON.stringify(data, null, 2);
 
         console.log(data);
-        return data;
-
     } catch (error) {
         console.error("There was a problem with the fetch operation.", error);
     }
@@ -90,6 +88,12 @@ const getCount = async () => {
     console.log("count: ", count);
 
     document.getElementById('contractCounter').textContent = "Counter: " + count;
+};
+
+const updateValues = async () => {
+    // Update values in web page
+    fetchData();
+    getCount();
 };
 
 document.incrementForm.onsubmit = () => {
@@ -115,7 +119,7 @@ document.incrementForm.onsubmit = () => {
 
         const messages = [executeMsg];
       
-        // Set the fee dynamically but the feeGranterAddress will pay the transaction fee if an allowance exist
+        // Set the fee dynamically but the feeGranterAddress will pay the transaction fee if an allowance exists
         const fee = await signingClient.calculateFee(signerAddress, messages, undefined, 1.5, feeGranterAddress);
       
         // Allow the user to sign the transaction via Keplr after which the transaction will be broadcasted on chain
@@ -126,9 +130,9 @@ document.incrementForm.onsubmit = () => {
             alert("Increment transacation failed: " + broadcastResult.log || broadcastResult.rawLog);
         } else {
             alert("Increment transacation successful:" + broadcastResult.transactionHash);
+
             // Update values in web page
-            fetchData();
-            getCount();
+            updateValues();
         }
     })();
 
