@@ -81,7 +81,7 @@ export default {
                   preferNoSetFee: true,
                 }
               }
-              this.offlineSigner = await window.getOfflineSigner(this.chainMeta.chainId);
+              this.offlineSigner = await window.getOfflineSignerAuto(this.chainMeta.chainId);
               this.cwClient = await SigningArchwayClient.connectWithSigner(
                 this.rpc, 
                 this.offlineSigner

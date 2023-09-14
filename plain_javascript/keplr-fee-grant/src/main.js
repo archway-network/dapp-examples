@@ -18,7 +18,7 @@ var loader = document.querySelector('.loading');
 loader.style.display = 'none';
 
 window.onload = async () => {
-    if (!window.getOfflineSigner || !window.keplr) {
+    if (!window.getOfflineSignerAuto || !window.keplr) {
         alert("Please install keplr extension");
     } else {
         if (window.keplr.experimentalSuggestChain) {
@@ -38,7 +38,7 @@ window.onload = async () => {
                 await window.keplr.enable(chainId);
                 
                 // Get offline signer via Keplr
-                offlineSigner = window.keplr.getOfflineSigner(chainId);
+                offlineSigner = window.keplr.getOfflineSignerAuto(chainId);
 
                 // Get user selected account
                 accounts = await offlineSigner.getAccounts();
