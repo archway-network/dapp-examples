@@ -280,7 +280,7 @@ export default {
             if (window.keplr['experimentalSuggestChain']) {
               await window.keplr.experimentalSuggestChain(this.chainMeta)
               await window.keplr.enable(this.chainMeta.chainId);
-              this.offlineSigner = await window.getOfflineSigner(this.chainMeta.chainId);
+              this.offlineSigner = await window.getOfflineSignerAuto(this.chainMeta.chainId);
               this.wasmClient = await SigningArchwayClient.connectWithSigner(
                 this.rpc, 
                 this.offlineSigner

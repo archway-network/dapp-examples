@@ -3,7 +3,7 @@ import BigNumber from 'bignumber.js';
 import ChainInfo from './constantine.config.js';
 
 window.onload = async () => {
-    if (!window.getOfflineSigner || !window.keplr) {
+    if (!window.getOfflineSignerAuto || !window.keplr) {
         alert("Please install keplr extension");
     } else {
         if (window.keplr.experimentalSuggestChain) {
@@ -30,7 +30,7 @@ document.sendForm.onsubmit = () => {
 
         await window.keplr.enable(chainId);
 
-        const offlineSigner = window.keplr.getOfflineSigner(chainId);
+        const offlineSigner = window.keplr.getOfflineSignerAuto(chainId);
         const signingClient = await SigningArchwayClient.connectWithSigner(ChainInfo.rpc, offlineSigner);
 
         const accounts = await offlineSigner.getAccounts();
