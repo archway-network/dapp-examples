@@ -30,7 +30,7 @@ document.sendForm.onsubmit = () => {
 
         await window.keplr.enable(chainId);
 
-        const offlineSigner = window.keplr.getOfflineSignerAuto(chainId);
+        const offlineSigner = window.getOfflineSigner(chainId);
         const signingClient = await SigningArchwayClient.connectWithSigner(ChainInfo.rpc, offlineSigner);
 
         const accounts = await offlineSigner.getAccounts();
