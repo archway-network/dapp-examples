@@ -11,7 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@archwayhq/arch3.js": "^0.3.0",
+    "@archwayhq/arch3.js": "^0.7.0",
     "axios": "^1.3.6",
     "dotenv": "^16.0.3",
     "google-protobuf": "^3.21.2",
