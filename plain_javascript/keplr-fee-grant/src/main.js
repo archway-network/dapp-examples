@@ -67,7 +67,7 @@ window.addEventListener("keplr_keystorechange", async () => {
 
 const fetchData = async () => {
     try {
-        const response = await fetch('https://api.constantine.archway.tech/cosmos/feegrant/v1beta1/allowance/' + feeGranterAddress + '/' + signerAddress);
+        const response = await fetch('https://api.constantine.archway.io/cosmos/feegrant/v1beta1/allowance/' + feeGranterAddress + '/' + signerAddress);
 
         const data = await response.json();
 
@@ -126,7 +126,7 @@ document.incrementForm.onsubmit = () => {
         const messages = [executeMsg];
       
         // Set the fee dynamically but the feeGranterAddress will pay the transaction fee if an allowance exists
-        const fee = await signingClient.calculateFee(signerAddress, messages, undefined, 1.5, feeGranterAddress);
+        const fee = await signingClient.calculateFee(signerAddress, messages, undefined, 1.7, feeGranterAddress);
 
         // Show the loader
         loader.style.display = '';
@@ -139,7 +139,8 @@ document.incrementForm.onsubmit = () => {
 
         if (broadcastResult.code !== undefined &&
             broadcastResult.code !== 0) {
-            alert("Increment transacation failed: " + broadcastResult.log || broadcastResult.rawLog);
+            console.log(broadcastResult);
+            alert("Increment transacation failed: " + broadcastResult.rawLog);
         } else {
             alert("Increment transacation successful:" + broadcastResult.transactionHash);
 
