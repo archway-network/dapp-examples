@@ -9,7 +9,7 @@ dotenv.config();
 async function main() {
   const network = {
     chainId: 'constantine-3',
-    endpoint: 'https://rpc.constantine.archway.tech',
+    endpoint: 'https://rpc.constantine.archway.io',
     prefix: 'archway',
   };
 
