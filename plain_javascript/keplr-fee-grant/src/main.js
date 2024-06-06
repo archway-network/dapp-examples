@@ -38,7 +38,7 @@ window.onload = async () => {
                 await window.keplr.enable(chainId);
                 
                 // Get offline signer via Keplr
-                offlineSigner = window.keplr.getOfflineSignerAuto(chainId);
+                offlineSigner = window.getOfflineSigner(chainId);
 
                 // Get user selected account
                 accounts = await offlineSigner.getAccounts();
