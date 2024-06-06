@@ -8,7 +8,7 @@ dotenv.config();
 async function main() {
   const network = {
     chainId: 'constantine-3',
-    endpoint: 'https://rpc.constantine.archway.tech',
+    endpoint: 'https://rpc.constantine.archway.io',
     prefix: 'archway',
   };
 
@@ -54,7 +54,7 @@ async function main() {
   );
   
   if (broadcastResult.code !== undefined && broadcastResult.code !== 0) {
-    console.log("Transaction failed:", broadcastResult.log || broadcastResult.rawLog);
+    console.log("Transaction failed:", broadcastResult.rawLog);
   } else {
     console.log("Transaction successful:", broadcastResult.transactionHash);
   }
